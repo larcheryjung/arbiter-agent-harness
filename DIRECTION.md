@@ -117,7 +117,7 @@ LESSONS.md
 ## 9. Repo ของ harness
 
 ```
-unnamed-agent-harness/
+arbiter-agent-harness/
   bin/arbiter              # spec | review | gate (สร้าง prompt, นับรอบ, ตัดสินด้วย exit code)
   tracks/                  # quick, feature, spike: Antigravity workflow + Claude skill
   floor/                   # git hooks + Claude hooks + settings.json (allowlist)
