@@ -1,0 +1,14 @@
+---
+description: ทำการ์ด KS-xx ด้วย arbiter (spec, ถามตอบ, Gate 1, เขียนโค้ด, review, Gate 2, commit)
+---
+
+# /feature KS-xx
+
+1. รัน `python "{{ARBITER}}" spec KS-xx` ถ้าการ์ดมี spec อยู่แล้ว ให้รัน `python "{{ARBITER}}" status KS-xx` แทน
+2. ทุกครั้งที่รัน arbiter ให้อ่านบรรทัด `STATUS:` และทำตามบรรทัด `NEXT:` เท่านั้น (exit code ไม่ได้บอกผล)
+3. ข้อความที่ arbiter ให้แสดงต่อผู้ใช้ (คำถาม, spec, หน้า Gate 2) ให้แสดงตามตัวอักษร ห้ามสรุปหรือแปลใหม่
+4. ข้อความของผู้ใช้ที่ต้องส่งให้ arbiter ให้ส่งตามที่พิมพ์จริง ห้ามแก้ ห้ามเติม
+5. ห้ามเขียน prompt หรือคำอธิบายส่งให้ Claude เอง และห้ามแก้ไฟล์ใน `.arbiter/`
+6. ตอนเขียนโค้ด แก้เฉพาะไฟล์ใน `scope_allow` ของ spec ถ้าจำเป็นต้องแก้นอก scope ให้หยุดถามผู้ใช้
+7. ห้ามตัดสินเองว่างานผ่าน ผลผ่านหรือไม่ผ่านมาจาก `arbiter review` เท่านั้น ห้าม commit เอง ให้ใช้ `arbiter commit`
+8. หลัง `STATUS: COMMITTED` ให้ขยับการ์ดบน Jira ตามกฎ lifecycle เดิม

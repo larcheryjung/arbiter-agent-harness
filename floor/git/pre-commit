@@ -1,0 +1,3 @@
+#!/bin/sh
+# arbiter floor: scope + secrets check on every commit, whoever commits.
+exec python "$(dirname "$0")/pre_commit.py"

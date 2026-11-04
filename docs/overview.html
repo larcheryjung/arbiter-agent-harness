@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arbiter v0 Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --surface-2: #f0eee8; --text: #1d1d1b; --muted: #5f5d57;
+  --line: #dedbd2; --accent: #2f5d50; --accent-soft: #e3eee9;
+  --human: #8a4b14; --human-soft: #f6e8da; --gemini: #1f4e8c; --gemini-soft: #e2ebf7;
+  --claude: #9a3b26; --claude-soft: #f7e3dc; --machine: #2f5d50; --machine-soft: #e3eee9;
+  --ok: #2e6b3a; --warn: #8a6100; --bad: #a12f2f;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --surface: #1f1f1c; --surface-2: #2a2a26; --text: #ecebe6; --muted: #a9a79f;
+    --line: #3a3934; --accent: #8cc4b0; --accent-soft: #23352f;
+    --human: #e3a76f; --human-soft: #3a2a1b; --gemini: #8db4ea; --gemini-soft: #1d2a3d;
+    --claude: #eb9a83; --claude-soft: #3b231d; --machine: #8cc4b0; --machine-soft: #23352f;
+    --ok: #8fd19e; --warn: #e5c06a; --bad: #f09a9a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --surface: #1f1f1c; --surface-2: #2a2a26; --text: #ecebe6; --muted: #a9a79f;
+  --line: #3a3934; --accent: #8cc4b0; --accent-soft: #23352f;
+  --human: #e3a76f; --human-soft: #3a2a1b; --gemini: #8db4ea; --gemini-soft: #1d2a3d;
+  --claude: #eb9a83; --claude-soft: #3b231d; --machine: #8cc4b0; --machine-soft: #23352f;
+  --ok: #8fd19e; --warn: #e5c06a; --bad: #f09a9a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 "IBM Plex Sans Thai", system-ui, sans-serif; }
+code, pre { font-family: var(--mono); font-size: .9em; }
+code { background: var(--surface-2); padding: .05em .35em; border-radius: 4px; }
+pre { background: var(--surface-2); padding: 14px 16px; border-radius: 8px; overflow-x: auto; line-height: 1.55; margin: 12px 0; }
+pre code { background: none; padding: 0; }
+a { color: var(--accent); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; }
+nav.toc { position: sticky; top: 24px; align-self: start; padding-top: 40px; font-size: 14px; }
+nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover { color: var(--text); border-left-color: var(--accent); }
+main { padding: 40px 0 80px; min-width: 0; }
+header.hero { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+.eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 34px; line-height: 1.25; margin: 6px 0 12px; }
+h1 .placeholder { color: var(--muted); font-weight: 500; }
+.lede { font-size: 19px; color: var(--muted); margin: 0; max-width: 60ch; }
+section { padding-top: 36px; }
+h2 { font-size: 23px; margin: 0 0 6px; }
+h2 + .sub { color: var(--muted); margin: 0 0 16px; }
+h3 { font-size: 17px; margin: 22px 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat b { display: block; font-size: 26px; line-height: 1.2; }
+.stat span { color: var(--muted); font-size: 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-2); font-weight: 600; font-size: 14px; }
+tr:last-child td { border-bottom: none; }
+.tbl { overflow-x: auto; }
+ol.principles { counter-reset: p; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ol.principles li { counter-increment: p; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 12px 54px; position: relative; }
+ol.principles li::before { content: counter(p); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; font-size: 14px; }
+ol.principles b { display: block; }
+.role { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+.r-human { background: var(--human-soft); color: var(--human); }
+.r-gemini { background: var(--gemini-soft); color: var(--gemini); }
+.r-claude { background: var(--claude-soft); color: var(--claude); }
+.r-machine { background: var(--machine-soft); color: var(--machine); }
+.flow { list-style: none; padding: 0; margin: 0; position: relative; }
+.flow::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.flow > li { position: relative; padding: 0 0 18px 46px; }
+.flow > li::before { content: ""; position: absolute; left: 9px; top: 7px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); }
+.flow > li.gate::before { border-color: var(--human); background: var(--human); }
+.flow .step { font-weight: 600; }
+.flow .detail { color: var(--muted); font-size: 15px; }
+.flow .branch { margin-top: 6px; display: grid; gap: 4px; font-size: 15px; }
+.st { font-family: var(--mono); font-size: 12.5px; font-weight: 500; padding: 1px 7px; border-radius: 5px; background: var(--surface-2); white-space: nowrap; }
+.st.ok { color: var(--ok); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); }
+.layers { display: grid; gap: 8px; }
+.layer { border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; background: var(--surface); display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; }
+.layer h4 { margin: 0; font-size: 16px; }
+.layer p { margin: 0; color: var(--muted); font-size: 15px; }
+.layer.l1 { border-left: 5px solid var(--machine); }
+.layer.l2 { border-left: 5px solid var(--gemini); }
+.layer.l3 { border-left: 5px solid var(--muted); }
+.callout { border-left: 4px solid var(--warn); background: var(--surface); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+.callout.good { border-left-color: var(--ok); }
+.names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.name h4 { margin: 0 0 2px; font-size: 20px; font-family: var(--mono); }
+.name .th { color: var(--muted); font-size: 14px; }
+.name p { margin: 8px 0 0; font-size: 15px; }
+.name pre { font-size: 13px; padding: 8px 10px; margin: 10px 0 0; }
+.tag { font-size: 12px; color: var(--accent); font-weight: 600; }
+.theme-btn { position: fixed; top: 14px; right: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); margin-top: 48px; padding-top: 16px; }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  nav.toc { display: none; }
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g2, .names { grid-template-columns: minmax(0, 1fr); }
+  .layer { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  h1 { font-size: 27px; }
+}
+</style>
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <a href="#why">ทำไมต้องมีตัวใหม่</a>
+  <a href="#principles">หลักแกน 7 ข้อ</a>
+  <a href="#roles">ใครทำอะไร</a>
+  <a href="#flow">ลำดับงาน /feature</a>
+  <a href="#layers">โครง 3 ชั้น</a>
+  <a href="#enforce">สิ่งที่เครื่องบังคับ</a>
+  <a href="#files">ไฟล์ของการ์ด</a>
+  <a href="#usage">การใช้งาน</a>
+  <a href="#results">ผลทดสอบ</a>
+  <a href="#limits">ข้อจำกัดที่รู้แล้ว</a>
+  <a href="#names">ที่มาของชื่อ</a>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Agent Harness · v0.1.0 · 4 พ.ย. 2026</div>
+  <h1>Arbiter</h1>
+  <p class="lede">ใช้ AeroHarness ที่ทำงานเร็วเหมือนเดิม คือ Gemini เรียก Claude เองอัตโนมัติ แต่ย้ายการตัดสินว่างานผ่านหรือไม่ จาก “AI เล่าเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคุณยังกดอนุมัติแค่ 2 จุดเท่าเดิม</p>
+</header>
+
+<section id="why">
+  <h2>ทำไมต้องมีตัวใหม่</h2>
+  <p class="sub">harness ตัวที่ 5 ในรอบ 3 เดือน ตัวนี้จึงสร้างจากบทเรียนของตัวก่อนๆ ไม่ได้เริ่มจากศูนย์</p>
+  <div class="tbl"><table>
+    <tr><th>ตัวก่อนหน้า</th><th>รูปแบบ</th><th>ใช้คุมงานจริง</th><th>บทเรียน</th></tr>
+    <tr><td>DUET</td><td>bash CLI + กฎยาว</td><td>0 งาน</td><td>กฎยาวกว่างานที่มันคุม</td></tr>
+    <tr><td>Aether Forge</td><td>forge.py + git hook</td><td>ไม่มีโปรเจกต์อื่นใช้</td><td>ต้องพิมพ์คำสั่งเพิ่มทุกขั้น จึงไม่มีใครใช้</td></tr>
+    <tr><td><b>AeroHarness</b></td><td>กฎ + template + invoke-claude.ps1</td><td><b>14+ การ์ด</b></td><td>เร็วเพราะ Gemini เรียก Claude เอง แต่ผ่านหรือไม่ผ่านมาจากที่ AI เล่า</td></tr>
+    <tr><td>Triumvirate</td><td>Node CLI</td><td>เฉพาะ testing-ground</td><td>แยกบทบาทออกจาก driver ถูกทาง แต่ไม่มี gate ที่เครื่องตัดสิน</td></tr>
+  </table></div>
+  <h3>จุดอ่อนของ AeroHarness ที่ตัวใหม่แก้</h3>
+  <div class="grid g2">
+    <div class="card">ผลรันเทสต์ใน Handoff คือข้อความที่ Builder เขียนเอง เช่น “Exit code 0, มั่นใจ 100%” Gate 2 จึงเป็นการอนุมัติตามที่ AI เล่า</div>
+    <div class="card">Gemini เขียน prompt ให้ Claude เองว่าต้องตรวจอะไร <b>คนถูกตรวจเป็นคนกำหนดขอบเขตการตรวจ</b></div>
+    <div class="card">ใช้ <code>--dangerously-skip-permissions</code> ซึ่งปิดชั้นบังคับชั้นเดียวที่ Claude Code มี</div>
+    <div class="card">ไม่มีอะไรเช็ก <code>scope_allow</code> จริง และ 10 ขั้นเท่ากันทุกการ์ดไม่ว่างานเล็กหรือใหญ่</div>
+  </div>
+</section>
+
+<section id="principles">
+  <h2>หลักแกน 7 ข้อ</h2>
+  <p class="sub">ถ้าจำได้แค่หน้านี้ก็พอ</p>
+  <ol class="principles">
+    <li><b>เครื่องเป็นคนตัดสิน ไม่ใช่ AI เล่า</b>ผ่านหรือไม่ผ่านมาจาก <code>evidence.json</code> ที่ script สร้าง และผูกกับ hash ของโค้ดชุดที่ถูกทดสอบจริง</li>
+    <li><b>คนกดแค่ Gate 1 และ Gate 2</b>ระหว่างสอง gate ทำงานอัตโนมัติทั้งหมด ไม่มีการสลับ panel หรือส่งงานต่อด้วยมือ</li>
+    <li><b>คนถูกตรวจห้ามเป็นคนเขียนโจทย์ให้คนตรวจ</b>Gemini ส่งแค่ตัวชี้ (<code>KS-xx</code>) แล้ว Claude อ่านการ์ด, spec และโค้ดจากต้นทางเอง</li>
+    <li><b>พื้นกันพังเป็นโค้ด ไม่ใช่ prompt</b>git hook และ gate script บังคับได้ทั้ง Gemini และ Claude และไม่กิน context เลย</li>
+    <li><b>harness ตัวเดียว แยกท่าตามประเภทงาน</b>โหลดเฉพาะท่าที่ใช้ ฝั่ง Gemini อ่านแค่ workflow 14 บรรทัด</li>
+    <li><b>ส่งต่องานผ่านไฟล์ และ reset context ทุกการ์ด</b>ทุกอย่างที่สำคัญอยู่ในโฟลเดอร์การ์ด ส่วน session ของ Claude เป็นแค่ตัวช่วยให้เร็วขึ้น</li>
+    <li><b>บทเรียนต้องย้อนกลับมาแก้ harness</b>สะดุดเมื่อไรให้จด 1 บรรทัด ถ้าเจอซ้ำค่อยเพิ่มตัวตรวจ ส่วนกฎที่ไม่เคยจับอะไรได้ให้ลบทิ้ง</li>
+  </ol>
+</section>
+
+<section id="roles">
+  <h2>ใครทำอะไร</h2>
+  <div class="tbl"><table>
+    <tr><th>ใคร</th><th>ทำ</th><th>ห้ามทำ</th></tr>
+    <tr><td><span class="role r-human">คุณก้อง</span></td><td>ตอบคำถาม, อนุมัติ Gate 1 และ Gate 2, ตัดสินเรื่องที่ถูกส่งขึ้นมา</td><td>—</td></tr>
+    <tr><td><span class="role r-gemini">Gemini</span> (Antigravity)</td><td>คุมงาน, เขียนโค้ด, เรียกคำสั่ง arbiter แล้วทำตามบรรทัด <code>NEXT:</code></td><td>เขียน prompt ให้ Claude, ตัดสินเองว่างานผ่าน, แก้ไฟล์ใน <code>.arbiter/</code>, commit เอง</td></tr>
+    <tr><td><span class="role r-claude">Claude</span> (<code>claude -p</code>)</td><td>ร่าง spec และคำถาม, review โค้ดเทียบกับ spec</td><td>แก้ไฟล์ใดๆ (มีแค่ Read, Grep, Glob และ Jira อ่านอย่างเดียว)</td></tr>
+    <tr><td><span class="role r-machine">script</span></td><td>สร้าง prompt, รัน gate, อ่านผลตัดสิน, นับรอบ, สร้างหน้า Gate 2, commit</td><td>—</td></tr>
+  </table></div>
+</section>
+
+<section id="flow">
+  <h2>ลำดับงาน /feature</h2>
+  <p class="sub">สถานะที่ script ส่งกลับมาแสดงเป็นป้าย <span class="st">STATUS</span> ซึ่ง Gemini อ่านแล้วทำตาม <code>NEXT:</code></p>
+  <ol class="flow">
+    <li><div class="step"><span class="role r-human">คุณก้อง</span> “ทำ KS-xx”</div></li>
+    <li><div class="step"><span class="role r-gemini">Gemini</span> <code>arbiter spec KS-xx</code></div>
+      <div class="detail"><span class="role r-claude">Claude</span> อ่านการ์ดจาก Jira, <code>intent.md</code> และโค้ด แล้วส่ง spec กลับมาพร้อมคำถาม 0–5 ข้อ ทุกข้อมีค่าที่จะใช้ถ้าไม่ตอบ</div>
+      <div class="branch"><div><span class="st warn">NEEDS_ANSWERS</span> แสดงคำถามตามตัวอักษร คุณตอบ แล้ว <code>arbiter answer KS-xx "&lt;คำตอบเดิม&gt;"</code> Claude resume session เดิมแล้วแก้ spec</div>
+      <div><span class="st ok">READY_FOR_GATE1</span> แสดง spec ให้คุณอ่าน</div></div></li>
+    <li class="gate"><div class="step">🚪 Gate 1 คุณอนุมัติ spec</div>
+      <div class="detail"><code>arbiter approve KS-xx "&lt;ข้อความอนุมัติ&gt;"</code> บันทึก sha ของ spec ไว้ ถ้า spec ถูกแก้หลังจากนี้ ทุกขั้นถัดไปจะถูกบล็อก</div></li>
+    <li><div class="step"><span class="role r-gemini">Gemini</span> เขียนโค้ดเฉพาะใน <code>scope_allow</code> แล้ว <code>arbiter review KS-xx</code></div>
+      <div class="detail"><span class="role r-machine">script</span> ตรวจ scope และรัน verify แล้วเขียน <code>evidence.json</code> ถ้าผ่านค่อยให้ <span class="role r-claude">Claude</span> review แบบอ่านอย่างเดียว</div>
+      <div class="branch"><div><span class="st bad">FAIL</span> Gemini แก้แล้ว review ใหม่ (อัตโนมัติ)</div>
+      <div><span class="st bad">ESCALATE</span> reviewer ตีกลับครบ 2 รอบ ส่งให้คุณตัดสิน</div>
+      <div><span class="st ok">READY_FOR_GATE2</span> script สร้างหน้า Gate 2 จาก evidence และผล review</div></div></li>
+    <li class="gate"><div class="step">🚪 Gate 2 คุณอ่านหน้า Gate 2 แล้วอนุมัติ</div>
+      <div class="detail"><code>arbiter commit KS-xx "&lt;ข้อความอนุมัติ&gt;"</code> ตรวจซ้ำว่าโค้ดตรงกับชุดที่ review ผ่านทุกไบต์ ถ้าไม่ตรงได้ <span class="st warn">STALE</span></div></li>
+    <li><div class="step"><span class="st ok">COMMITTED</span> <span class="role r-gemini">Gemini</span> ขยับการ์ด Jira ตามกฎ lifecycle เดิม</div></li>
+  </ol>
+  <div class="callout good">ปกติคุณเข้ามา 2 ครั้ง (บวกการตอบคำถามที่ Gate 1 ถ้ามี) จะเข้ามาเพิ่มเฉพาะเมื่อเกิด <span class="st bad">ESCALATE</span> หรือ <span class="st bad">ERROR</span></div>
+</section>
+
+<section id="layers">
+  <h2>โครง 3 ชั้น</h2>
+  <div class="layers">
+    <div class="layer l1"><h4>ชั้น 1 · Floor</h4><p>ใช้กับทุกงาน เป็นโค้ดทั้งหมด จึงไม่กิน context: git pre-commit, gate script และ jira-guard (มีอยู่แล้ว 3 ชั้น)</p></div>
+    <div class="layer l2"><h4>ชั้น 2 · Track</h4><p>โหลดเฉพาะท่าที่ใช้ · v0 มี <code>/feature</code> · ภายหลังจะมี <code>/quick</code>, <code>/spike</code> และโหมด Ops · <code>/greenfield</code> กับ migration รอจนมีงานจริง</p></div>
+    <div class="layer l3"><h4>ชั้น 3 · Pack</h4><p>ความรู้เฉพาะเรื่อง โหลดเมื่อเกี่ยวข้อง เช่น jira-ks, spring-boot, windows-ps (ยังไม่ได้ทำใน v0)</p></div>
+  </div>
+</section>
+
+<section id="enforce">
+  <h2>สิ่งที่เครื่องบังคับ</h2>
+  <p class="sub">ทุกข้อในตารางนี้มีเทสต์ยืนยัน</p>
+  <div class="tbl"><table>
+    <tr><th>จุด</th><th>ตรวจอะไร</th></tr>
+    <tr><td><code>review</code> (gate)</td><td>ไฟล์ที่เปลี่ยนอยู่ใน scope_allow · รัน verify ครบ (ไม่มี verify เลย = FAIL) · คำสั่ง verify ที่มาจาก spec ห้ามมี <code>| &amp; ;</code> · โค้ดต้องไม่เปลี่ยนระหว่างรันเทสต์ · spec ต้องตรงกับที่อนุมัติ</td></tr>
+    <tr><td>Claude</td><td>เรียกด้วย <code>--tools Read,Grep,Glob</code> จึงไม่มี Bash, Edit หรือ Write ให้ใช้ · ตอบตามรูปแบบที่กำหนด แล้ว script เขียนไฟล์เอง</td></tr>
+    <tr><td><code>commit</code></td><td>evidence ต้องผ่าน · spec ตรงกับ Gate 1 และตรงกับตอน review · โค้ดตรงกับ tree ที่ review · สิ่งที่ stage ใน git index ต้องตรงกับ tree นั้นด้วย (กัน assume-unchanged และ force-add)</td></tr>
+    <tr><td>git pre-commit</td><td>commit โค้ดได้เฉพาะผ่าน <code>arbiter commit</code> · ไฟล์ต้องอยู่ใน scope ของ spec ที่อนุมัติ · บล็อก private key, AWS/Atlassian/GitHub token, <code>.env</code>, ไฟล์ SSH key · ห้ามแก้ config · ถ้าไม่แน่ใจจะปฏิเสธไว้ก่อน</td></tr>
+  </table></div>
+</section>
+
+<section id="files">
+  <h2>ไฟล์ของการ์ด</h2>
+  <p class="sub"><code>.arbiter/tasks/KS-xx/</code> แยกจาก <code>kong-workspace/</code> เดิม และ commit ไปพร้อมโค้ดเพื่อใช้ตรวจย้อนหลัง</p>
+  <div class="tbl"><table>
+    <tr><th>ไฟล์</th><th>เขียนโดย</th><th>คืออะไร</th></tr>
+    <tr><td><code>intent.md</code></td><td><span class="role r-human">คน</span></td><td>สิ่งที่คุณบอกหรือตัดสินใจไว้ (ไม่บังคับ)</td></tr>
+    <tr><td><code>spec.md</code></td><td><span class="role r-machine">script</span> จากคำตอบของ Claude</td><td>Goal, Non-goals, AC, Approach และบล็อก <code>scope_allow</code> / <code>verify</code></td></tr>
+    <tr><td><code>questions.md</code> / <code>answers.md</code></td><td><span class="role r-machine">script</span></td><td>คำถามที่ยังค้าง / คำตอบของคุณตามตัวอักษรเดิม</td></tr>
+    <tr><td><code>approvals.json</code></td><td><span class="role r-machine">script</span></td><td>Gate 1 (sha ของ spec) และ Gate 2 (tree)</td></tr>
+    <tr><td><code>evidence.json</code></td><td><span class="role r-machine">script</span></td><td>tree hash, ไฟล์ที่เปลี่ยน, ผลแต่ละ check และ exit code</td></tr>
+    <tr><td><code>review.md</code> / <code>gate2.md</code></td><td><span class="role r-machine">script</span> จากคำตอบของ Claude</td><td>findings ทุกรอบ / หน้าสรุปสำหรับ Gate 2</td></tr>
+    <tr><td><code>sessions.jsonl</code></td><td><span class="role r-machine">script</span></td><td>session_id ของ Claude แต่ละครั้ง (ใช้ <code>claude --resume</code> เปิดดูได้) และค่าใช้จ่าย</td></tr>
+  </table></div>
+</section>
+
+<section id="usage">
+  <h2>การใช้งาน</h2>
+  <h3>ติดตั้งลงโปรเจกต์ (ครั้งเดียว)</h3>
+<pre><code>python C:\local-code-repo\unnamed-agent-harness\install.py --project C:\local-code-repo\hbs3\epolicy `
+  --verify "unit=powershell -NoProfile -File run-unit-tests.ps1"
+
+# คนทำเอง ครั้งเดียว: commit การติดตั้ง (ต้องข้าม hook เพราะยังไม่มีการ์ด)
+git add .arbiter .agent/workflows/feature.md
+git commit --no-verify -m "chore: install arbiter"</code></pre>
+  <h3>ใช้งานประจำวัน</h3>
+  <p>ใน panel ของ Antigravity พิมพ์ <code>/feature KS-160</code> แล้วตอบคำถามและอนุมัติตามที่ Gemini แสดง ไม่ต้องจำคำสั่งอื่น</p>
+  <div class="tbl"><table>
+    <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
+    <tr><td><code>spec KS-xx</code></td><td>เริ่มการ์ด</td></tr>
+    <tr><td><code>answer KS-xx "..."</code></td><td>ตอบคำถาม หรือขอแก้ spec (การอนุมัติ Gate 1 จะถูกยกเลิก)</td></tr>
+    <tr><td><code>approve KS-xx "..."</code></td><td>Gate 1</td></tr>
+    <tr><td><code>review KS-xx [--continue "..."]</code></td><td>หลังเขียนโค้ดเสร็จ / ให้ทำต่อหลัง ESCALATE</td></tr>
+    <tr><td><code>commit KS-xx "..." [-m msg]</code></td><td>Gate 2</td></tr>
+    <tr><td><code>status [KS-xx]</code></td><td>ดูว่าการ์ดอยู่ขั้นไหน</td></tr>
+  </table></div>
+</section>
+
+<section id="results">
+  <h2>ผลทดสอบ</h2>
+  <div class="grid g4">
+    <div class="card stat"><b>19/19</b><span>unittest ผ่าน (git repo จริง + Claude ปลอม)</span></div>
+    <div class="card stat"><b>2 รอบ</b><span>e2e กับ Claude จริง (haiku) ครบวงจร</span></div>
+    <div class="card stat"><b>$0.20–0.29</b><span>ค่า Claude ต่อการ์ดทดสอบ (haiku)</span></div>
+    <div class="card stat"><b>9 ข้อ</b><span>จาก independent review แก้แล้ว</span></div>
+  </div>
+  <h3>สิ่งที่ e2e จริงยืนยันแล้ว</h3>
+  <div class="tbl"><table>
+    <tr><th>เหตุการณ์</th><th>ผล</th></tr>
+    <tr><td>spec ของ Claude ใส่ verify ผิด (<code>cd e2e &amp;&amp; pytest</code>)</td><td>ขอแก้ผ่าน <code>answer</code> แล้ว resume session เดิม (12 วินาที) Claude แก้ให้ถูก</td></tr>
+    <tr><td>เขียนโค้ดแต่ไม่เขียนเทสต์</td><td>reviewer ให้ <span class="st bad">FAIL</span> พร้อมชี้ว่า AC3 ไม่มีเทสต์</td></tr>
+    <tr><td>unittest สร้าง <code>__pycache__</code> ที่ไม่ได้ ignore</td><td>gate บล็อก เพราะ commit จะพาไฟล์ขยะไปด้วย</td></tr>
+    <tr><td>แก้แล้ว review รอบ 2</td><td>reviewer ตรวจเฉพาะข้อเดิม แล้วให้ <span class="st ok">PASS</span></td></tr>
+    <tr><td>การ์ดที่ไม่ใช่ KS</td><td>jira-guard ปฏิเสธ แล้ว Claude ไปอ่าน <code>intent.md</code> แทน</td></tr>
+  </table></div>
+  <h3>ขั้น 0 ที่ทดสอบบนเครื่องนี้</h3>
+  <ul>
+    <li><code>claude -p</code> + allowlist ไม่ค้าง ถูกปฏิเสธภายใน 12 วินาที</li>
+    <li><code>-p --resume</code> จำบทสนทนาเดิมได้</li>
+    <li>Gemini ส่งคำตอบของคุณต่อตรงทุกตัวอักษร (เทียบกับ transcript แล้ว)</li>
+    <li>PowerShell <code>-Command</code> เปลี่ยน exit code ที่ไม่ใช่ 0 ให้เป็น 1 หมด จึงสื่อสารด้วยบรรทัด <code>STATUS:</code> แทน</li>
+  </ul>
+</section>
+
+<section id="limits">
+  <h2>ข้อจำกัดที่รู้แล้ว</h2>
+  <div class="callout">Arbiter ออกแบบมากัน <b>agent ที่ทำพลาดหรือมักง่าย</b> ยังกัน agent ที่ตั้งใจโกงได้ไม่ครบ</div>
+  <ul>
+    <li>ไฟล์ใน <code>.arbiter/</code> (approvals, evidence, state) agent แก้ได้ · <code>commit</code> ตรวจ spec, scope และ tree ซ้ำเอง แต่ยังเชื่อผล verify/review ใน evidence</li>
+    <li>agent รัน <code>approve</code> แทนคนได้ ตอนนี้ตรวจย้อนหลังได้จาก transcript ของ Antigravity</li>
+    <li><code>git commit --no-verify</code> ข้าม hook ได้ ต้องใช้ CI ตรวจ trailer <code>Arbiter-Tree</code> จึงจะปิดได้</li>
+    <li>v0 มีแค่ <code>/feature</code> และยังไม่ได้ลองผ่าน Gemini ครบวงจรบนโปรเจกต์จริง</li>
+  </ul>
+  <p>แนวทางรอบถัดไป: เก็บไฟล์หลักฐานตัวจริงใน <code>.git/arbiter/</code> · ให้ approve ต้องยืนยันด้วยรหัสที่แสดงให้คนเห็นเท่านั้น · ตรวจ transcript อัตโนมัติ</p>
+</section>
+
+<section id="names">
+  <h2>ที่มาของชื่อ</h2>
+  <div class="names">
+    <div class="card name"><h4>arbiter</h4><div class="th">ผู้ชี้ขาด</div>
+      <p>Gemini กับ Claude ทำงานและเถียงกันได้ แต่คำตัดสินว่างานผ่านหรือไม่มาจาก arbiter ซึ่งตัดสินจากหลักฐาน (exit code, tree hash, scope) ไม่ใช่จากคำบอกเล่าของ AI ตัวไหน และคุณยังเป็นคนอนุมัติขั้นสุดท้ายที่ Gate 1 และ Gate 2</p>
+<pre><code>arbiter review KS-160
+.arbiter/tasks/KS-160/</code></pre></div>
+  </div>
+</section>
+
+<footer>ไฟล์นี้อยู่ที่ <code>unnamed-agent-harness/docs/overview.html</code> · รายละเอียดการตัดสินใจทั้งหมดอยู่ใน <code>DIRECTION.md</code></footer>
+</main>
+</div>
+<script>
+(function () {
+  var btn = document.getElementById("themeBtn"), root = document.documentElement, key = "arbiter-overview-theme";
+  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  btn.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(key, next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
