@@ -25,8 +25,12 @@ verify:
 ```"""
 
 
-def spec_resp(questions="NONE", spec=SPEC):
-    return {"result": f"===SPEC===\n{spec}\n===QUESTIONS===\n{questions}\n===END==="}
+JIRA_OK = [{"name": "mcp__jira__jira_get_issue", "input": {"issue_key": "KS-1"}, "ok": True}]
+
+
+def spec_resp(questions="NONE", spec=SPEC, tools=None):
+    return {"result": f"===SPEC===\n{spec}\n===QUESTIONS===\n{questions}\n===END===",
+            "tools": JIRA_OK if tools is None else tools}
 
 
 def review_resp(verdict, findings="ไม่มี"):
@@ -136,6 +140,35 @@ class ArbiterTest(unittest.TestCase):
         log = self.git("log", "-1", "--format=%B").stdout
         self.assertIn(f"Arbiter-Tree: {ev['tree']}", log)
         self.assertEqual(self.git("status", "--porcelain").stdout.strip(), "")
+
+    def test_spec_without_jira_read_is_error_and_writes_no_spec(self):
+        self.queue([spec_resp(tools=[]), spec_resp()])
+        st, out = self.h("spec", "KS-1")
+        self.assertEqual(st, "ERROR", out)
+        self.assertIn("Jira", out)
+        self.assertFalse(self.card("spec.md").exists())
+        self.assertIn('"jira_read": false', self.card("sessions.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")  # rerun works once Jira is read
+
+    def test_failed_or_wrong_card_jira_call_does_not_count(self):
+        failed = [{"name": "mcp__jira__jira_get_issue", "input": {"issue_key": "KS-1"}, "ok": False}]
+        other = [{"name": "mcp__jira__jira_get_issue", "input": {"issue_key": "KS-2"}, "ok": True}]
+        self.queue([spec_resp(tools=failed), spec_resp(tools=other)])
+        self.assertEqual(self.h("spec", "KS-1")[0], "ERROR")
+        self.assertEqual(self.h("spec", "KS-1")[0], "ERROR")
+
+    def test_resumed_answer_needs_no_new_jira_read_but_fresh_fallback_does(self):
+        self.queue([spec_resp("1. ? [default: a]"), spec_resp(tools=[])])
+        self.h("spec", "KS-1")
+        self.assertEqual(self.h("answer", "KS-1", "a")[0], "READY_FOR_GATE1")
+        self.queue([{"is_error": True, "result": "No conversation found"}, spec_resp(tools=[])])
+        self.assertEqual(self.h("answer", "KS-1", "b")[0], "ERROR")
+
+    def test_require_jira_can_be_turned_off(self):
+        c = json.loads((self.repo / ".arbiter" / "config.json").read_text(encoding="utf-8"))
+        self.cfg(claude={**c["claude"], "require_jira": False})
+        self.queue([spec_resp(tools=[])])
+        self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")
 
     def test_answer_falls_back_to_fresh_session_when_resume_fails(self):
         self.queue([spec_resp("1. ? [default: a]"), {"is_error": True, "result": "No conversation found"}, spec_resp()])

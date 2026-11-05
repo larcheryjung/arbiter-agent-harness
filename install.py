@@ -34,7 +34,8 @@ def main():
         hc.write_json(cfg_path, {
             "arbiter_version": hc.VERSION, "key_pattern": r"KS-\d+", "verify": verify,
             "verify_timeout_sec": 3600, "max_rejections": 2, "max_gate_runs": 6,
-            "claude": {"spec_model": "opus", "review_model": "opus", "effort": "high", "timeout_sec": 1200}})
+            "claude": {"spec_model": "opus", "review_model": "opus", "effort": "high", "timeout_sec": 1200,
+                       "require_jira": True}})
         done.append(f"สร้าง {cfg_path}")
     else:
         done.append(f"มี {cfg_path} อยู่แล้ว (ไม่แตะ)")

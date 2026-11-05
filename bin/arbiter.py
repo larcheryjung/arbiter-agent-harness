@@ -75,7 +75,7 @@ class Card:
         override = os.environ.get("ARBITER_CLAUDE_CMD")
         cmd = override.split("|") if override else [shutil.which("claude") or "claude"]
         c = self.cfg.get("claude", {})
-        args = cmd + ["-p", "--output-format", "json",
+        args = cmd + ["-p", "--output-format", "stream-json", "--verbose",
                       "--model", os.environ.get("ARBITER_MODEL") or c.get(model_key, "opus")]
         if c.get("effort"):
             args += ["--effort", c["effort"]]
@@ -86,16 +86,21 @@ class Card:
         env = {k: v for k, v in os.environ.items() if k not in STRIP_ENV}
         r = subprocess.run(args, cwd=self.root, input=prompt, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=env, timeout=c.get("timeout_sec", 1200))
-        try:
-            data = json.loads(r.stdout)
-        except json.JSONDecodeError:
-            data = {"is_error": True, "result": f"(exit {r.returncode}) {(r.stderr or r.stdout)[-800:]}"}
+        data = parse_stream(r.stdout) or {
+            "is_error": True, "result": f"(exit {r.returncode}) {(r.stderr or r.stdout)[-800:]}", "tool_calls": []}
+        data["jira_read"] = any(t["ok"] and t["name"].endswith("jira_get_issue")
+                                and str(t["input"].get("issue_key", "")).upper() == self.key
+                                for t in data["tool_calls"])
         with self.p("sessions.jsonl").open("a", encoding="utf-8") as fh:
             fh.write(json.dumps({"at": now(), "mode": mode, "session_id": data.get("session_id"),
                                  "resumed": resume, "is_error": bool(data.get("is_error")),
                                  "cost_usd": data.get("total_cost_usd"),
-                                 "denials": len(data.get("permission_denials") or [])}) + "\n")
+                                 "denials": len(data.get("permission_denials") or []),
+                                 "jira_read": data["jira_read"]}) + "\n")
         return data
+
+    def require_jira(self):
+        return self.cfg.get("claude", {}).get("require_jira", True)
 
     def last_session(self, modes):
         p = self.p("sessions.jsonl")
@@ -104,8 +109,35 @@ class Card:
         return rows[-1]["session_id"] if rows else None
 
 
-def spec_result(card, data):
+def parse_stream(out):
+    """Fold `claude -p --output-format stream-json` into the final result event + every tool call and its outcome."""
+    calls, result = {}, None
+    for line in (out or "").splitlines():
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        content = (ev.get("message") or {}).get("content")
+        for c in content if isinstance(content, list) else []:
+            if c.get("type") == "tool_use":
+                calls[c.get("id")] = {"name": c.get("name", ""), "input": c.get("input") or {}, "ok": False}
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") in calls:
+                calls[c["tool_use_id"]]["ok"] = not c.get("is_error")
+        if ev.get("type") == "result":
+            result = ev
+    if result is not None:
+        result["tool_calls"] = list(calls.values())
+    return result
+
+
+def spec_result(card, data, fresh=True):
     s = sections(data.get("result"))
+    if fresh and card.require_jira() and not data.get("is_error") and not data.get("jira_read"):
+        card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
+        hc.say("ERROR", f"Claude อ่านการ์ด {card.key} จาก Jira ไม่สำเร็จ arbiter จึงไม่ใช้ spec รอบนี้ "
+                        f"(คำตอบของ Claude เก็บไว้ที่ {card.rel}/last-claude-output.txt)",
+               "แสดงข้อความนี้ให้ผู้ใช้ตามตัวอักษร ห้ามเดาสาเหตุ ห้ามแก้เอง แล้วหยุดรอคำสั่ง")
+        return 1
     if data.get("is_error") or "SPEC" not in s:
         card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
         hc.say("ERROR", f"Claude ไม่ได้ส่ง spec ตามรูปแบบ ดู {card.rel}/last-claude-output.txt",
@@ -148,13 +180,15 @@ def cmd_answer(a):
     if ap.pop("gate1", None):
         hc.write_json(card.p("approvals.json"), ap)  # spec will change, approval no longer valid
     data, sid = None, card.last_session({"spec", "answer"})
-    if sid:
+    if sid:  # the resumed session already read the card from Jira when it was verified
         data = card.claude(render("answer.md", KEY=card.key, ANSWER=text, CARD_DIR=card.rel),
                            SPEC_TOOLS, "spec_model", "answer", resume=sid)
         if data.get("is_error") or "SPEC" not in sections(data.get("result")):
             data = None
-    if data is None:  # fresh session rebuilds context from the card files
-        data = card.claude(render("spec.md", KEY=card.key, CARD_DIR=card.rel), SPEC_TOOLS, "spec_model", "answer")
+        else:
+            return spec_result(card, data, fresh=False)
+    # fresh session rebuilds context from the card files and must read Jira again
+    data = card.claude(render("spec.md", KEY=card.key, CARD_DIR=card.rel), SPEC_TOOLS, "spec_model", "answer")
     return spec_result(card, data)
 
 
