@@ -25,7 +25,18 @@ STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID", "
              "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_SESSION_ATTENDED")
 BUILTIN_TOOLS = "Read,Grep,Glob"  # --tools: the ONLY built-ins that exist in the session (no Bash/Edit/Write)
 SPEC_TOOLS = "Read,Grep,Glob,mcp__jira__jira_get_issue,mcp__jira__jira_search"
-REVIEW_TOOLS = "Read,Grep,Glob"
+LOCAL_SPEC_TOOLS = BUILTIN_TOOLS  # LOCAL cards have no Jira card, so no Jira access at all
+REVIEW_TOOLS = BUILTIN_TOOLS
+# Written in the target language itself: a model reading a Thai prompt drifts back to Thai otherwise.
+LANG_RULES = {
+    "th": "สำคัญ: เขียนเนื้อหาทั้งหมดเป็นภาษาไทย ชื่อไฟล์ คลาส เมธอด คำสั่ง และศัพท์เทคนิคใช้ตามต้นฉบับ "
+          "marker `===...===` และบล็อก ```arbiter ห้ามแปล",
+    "en": "IMPORTANT: Write all prose in English, even though these instructions are in Thai. Keep file, class "
+          "and method names, commands and the `===...===` markers and ```arbiter block exactly as they are.",
+}
+USER_ESCALATE = 'ตัดสินว่าจะให้ทำต่อหรือหยุด ถ้าให้ทำต่อ พิมพ์ "ทำต่อ" พร้อมแนวทางที่ต้องการ'
+THAI = re.compile(r"[฀-๿]")
+LATIN = re.compile(r"[A-Za-z]")
 DENY_TOOLS = "Edit,Write,NotebookEdit,Bash,PowerShell"
 SHELL_META = re.compile(r"[|&;<>`]")
 
@@ -60,16 +71,44 @@ class Card:
         self.root = hc.repo_root()
         self.cfg = hc.load_config(self.root)
         self.key = key.upper()
-        if not re.fullmatch(self.cfg.get("key_pattern", r"KS-\d+"), self.key):
+        self.local = bool(hc.LOCAL_RE.fullmatch(self.key))
+        if not self.local and not re.fullmatch(self.cfg.get("key_pattern", r"KS-\d+"), self.key):
             raise RuntimeError(f"รหัสการ์ด {self.key} ไม่ตรงกับ key_pattern ใน .arbiter/config.json")
         self.dir = hc.card_dir(self.root, self.key)
         self.rel = self.dir.relative_to(self.root).as_posix()
+        self.docs = self.cfg.get("docs_allow", [])
 
     def p(self, name):
         return self.dir / name
 
     def spec_text(self):
         return self.p("spec.md").read_text(encoding="utf-8") if self.p("spec.md").exists() else ""
+
+    def spec_tools(self):
+        return LOCAL_SPEC_TOOLS if self.local else SPEC_TOOLS
+
+    def spec_prompt(self):
+        source = render("source_local.md" if self.local else "source_jira.md", KEY=self.key, CARD_DIR=self.rel)
+        return render("spec.md", SOURCE=source, KEY=self.key, CARD_DIR=self.rel, LANG_RULE=self.lang_rule())
+
+    def lang_rule(self):
+        code = self.lang()
+        return LANG_RULES.get(code, f"IMPORTANT: Write all prose in the language with code '{code}'.")
+
+    def lang(self):
+        """Language code of the user's latest decisive words on this card (intent, answers), else `language`."""
+        texts = [self.p("intent.md").read_text(encoding="utf-8")] if self.p("intent.md").exists() else []
+        if self.p("answers.md").exists():
+            texts += re.split(r"^## .*$", self.p("answers.md").read_text(encoding="utf-8"), flags=re.M)
+        code = self.cfg.get("language", "th")
+        for t in reversed(texts):
+            if THAI.search(t):
+                code = "th"
+                break
+            if len(LATIN.findall(t)) >= 20:  # short replies like "1a 2b" decide nothing
+                code = "en"
+                break
+        return code
 
     def claude(self, prompt, tools, model_key, mode, resume=None):
         override = os.environ.get("ARBITER_CLAUDE_CMD")
@@ -100,7 +139,7 @@ class Card:
         return data
 
     def require_jira(self):
-        return self.cfg.get("claude", {}).get("require_jira", True)
+        return not self.local and self.cfg.get("claude", {}).get("require_jira", True)
 
     def last_session(self, modes):
         p = self.p("sessions.jsonl")
@@ -136,7 +175,9 @@ def spec_result(card, data, fresh=True):
         card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
         hc.say("ERROR", f"Claude อ่านการ์ด {card.key} จาก Jira ไม่สำเร็จ arbiter จึงไม่ใช้ spec รอบนี้ "
                         f"(คำตอบของ Claude เก็บไว้ที่ {card.rel}/last-claude-output.txt)",
-               "แสดงข้อความนี้ให้ผู้ใช้ตามตัวอักษร ห้ามเดาสาเหตุ ห้ามแก้เอง แล้วหยุดรอคำสั่ง")
+               f"แสดงข้อความนี้ให้ผู้ใช้ตามตัวอักษร ห้ามเดาสาเหตุ ห้ามแก้เอง แล้วหยุดรอ "
+               f"ถ้าผู้ใช้สั่งลองใหม่ ให้รัน {SELF} spec {card.key}",
+               user='พิมพ์ "ลองใหม่" เพื่อให้อ่านการ์ดอีกครั้ง ถ้าเป็นซ้ำ ให้ถาม Claude Code ตรวจการเชื่อมต่อ Jira')
         return 1
     if data.get("is_error") or "SPEC" not in s:
         card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
@@ -148,26 +189,49 @@ def spec_result(card, data, fresh=True):
     if q and q.upper() != "NONE":
         card.p("questions.md").write_text(f"<!-- {now()} -->\n{q}\n", encoding="utf-8")
         hc.say("NEEDS_ANSWERS", f"QUESTIONS ({card.key}):\n{q}",
-               f'แสดงคำถามข้างบนให้ผู้ใช้ตามตัวอักษร บอกว่ากำลังรอคำตอบ แล้วรัน '
-               f'{SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"')
+               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอคำตอบ จากนั้นรัน '
+               f'{SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"',
+               user="ตอบคำถามข้างบนในแชทนี้ ข้อที่ไม่ตอบจะใช้ค่า [default] ของข้อนั้น")
         return 0
     card.p("questions.md").unlink(missing_ok=True)
     warn = "" if hc.parse_block(s["SPEC"])["scope_allow"] else "\n(คำเตือน: spec ไม่มี scope_allow)"
-    hc.say("READY_FOR_GATE1", f"SPEC ({card.rel}/spec.md):\n\n{s['SPEC']}{warn}",
-           f'แสดง spec ข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
+    hc.say("READY_FOR_GATE1", f"SPEC {card.key} ({card.rel}/spec.md):\n\n{s['SPEC']}{warn}",
+           f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
            f'{SELF} approve {card.key} "<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>" '
-           f'ถ้าผู้ใช้ขอแก้ ให้รัน {SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"')
+           f'ถ้าผู้ใช้ขอแก้ ให้รัน {SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"',
+           user='อ่าน spec แล้วพิมพ์ "อนุมัติ Gate 1" เพื่อให้เริ่มเขียนโค้ด หรือพิมพ์สิ่งที่ต้องการให้แก้ใน spec')
     return 0
 
 
+def next_local_key(root):
+    d = hc.hdir(root) / "tasks"
+    nums = [int(m.group(1)) for p in (d.iterdir() if d.exists() else []) if (m := hc.LOCAL_RE.fullmatch(p.name))]
+    return f"LOCAL-{max(nums, default=0) + 1}"
+
+
 def cmd_spec(a):
-    card = Card(a.key)
+    if a.local and a.key:
+        raise RuntimeError("ใช้ได้อย่างใดอย่างหนึ่ง: spec <รหัสการ์ด> หรือ spec --local \"<โจทย์>\"")
+    if a.local:
+        text = " ".join(a.local).strip()
+        if not text:
+            raise RuntimeError("โจทย์ว่าง")
+        card = Card(next_local_key(hc.repo_root()))
+        card.dir.mkdir(parents=True, exist_ok=True)
+        card.p("intent.md").write_text(text + "\n", encoding="utf-8")  # the user's words, verbatim
+    elif a.key:
+        card = Card(a.key)
+        if card.local and not card.p("intent.md").exists():
+            raise RuntimeError(f"{card.key} ไม่มีโจทย์ (intent.md) งานใหม่ที่ไม่มีการ์ดให้เริ่มด้วย spec --local \"<โจทย์>\"")
+    else:
+        raise RuntimeError("ต้องระบุรหัสการ์ด หรือ --local \"<โจทย์>\"")
     if card.p("spec.md").exists():
-        hc.say("ERROR", f"{card.key} มี spec อยู่แล้ว", f"ใช้ {SELF} status {card.key} แทน")
+        hc.say("ERROR", f"{card.key} มี spec อยู่แล้ว", f"ใช้ {SELF} status {card.key} แทน",
+               user="ไม่ต้องทำอะไร Gemini จะดูสถานะการ์ดนี้ต่อ")
         return 1
     card.dir.mkdir(parents=True, exist_ok=True)
     (hc.hdir(card.root) / "ACTIVE").write_text(card.key, encoding="utf-8")
-    data = card.claude(render("spec.md", KEY=card.key, CARD_DIR=card.rel), SPEC_TOOLS, "spec_model", "spec")
+    data = card.claude(card.spec_prompt(), card.spec_tools(), "spec_model", "spec")
     return spec_result(card, data)
 
 
@@ -181,14 +245,15 @@ def cmd_answer(a):
         hc.write_json(card.p("approvals.json"), ap)  # spec will change, approval no longer valid
     data, sid = None, card.last_session({"spec", "answer"})
     if sid:  # the resumed session already read the card from Jira when it was verified
-        data = card.claude(render("answer.md", KEY=card.key, ANSWER=text, CARD_DIR=card.rel),
-                           SPEC_TOOLS, "spec_model", "answer", resume=sid)
+        data = card.claude(render("answer.md", KEY=card.key, ANSWER=text, CARD_DIR=card.rel,
+                                  LANG_RULE=card.lang_rule()),
+                           card.spec_tools(), "spec_model", "answer", resume=sid)
         if data.get("is_error") or "SPEC" not in sections(data.get("result")):
             data = None
         else:
             return spec_result(card, data, fresh=False)
     # fresh session rebuilds context from the card files and must read Jira again
-    data = card.claude(render("spec.md", KEY=card.key, CARD_DIR=card.rel), SPEC_TOOLS, "spec_model", "answer")
+    data = card.claude(card.spec_prompt(), card.spec_tools(), "spec_model", "answer")
     return spec_result(card, data)
 
 
@@ -225,7 +290,7 @@ def run_cmd(cmd, cwd, log, timeout):
 def run_gate(card, rnd):
     spec = card.spec_text()
     blk = hc.parse_block(spec)
-    tree, base = hc.code_tree(card.root)
+    tree, base = hc.code_tree(card.root, card.docs)
     changed = hc.changed_files(card.root, base, tree)
     outside = [f for f in changed if not hc.in_scope(f, blk["scope_allow"])]
     checks = [{"name": "scope", "exit": 1 if outside or not changed else 0,
@@ -245,7 +310,7 @@ def run_gate(card, rnd):
             code = run_cmd(v["cmd"], card.root, log, card.cfg.get("verify_timeout_sec", 3600))
             checks.append({"name": v["name"], "cmd": v["cmd"], "exit": code,
                            "seconds": round(time.time() - t0, 1), "log": log.name})
-    if hc.code_tree(card.root)[0] != tree:  # verify must test exactly the recorded tree
+    if hc.code_tree(card.root, card.docs)[0] != tree:  # verify must test exactly the recorded tree
         checks.append({"name": "tree-stable", "exit": 1,
                        "note": "โค้ดเปลี่ยนระหว่างรัน verify (คำสั่ง verify แก้ไฟล์ หรือมีคนแก้ระหว่างรัน)"})
     ok = all(c["exit"] == 0 for c in checks)
@@ -274,7 +339,8 @@ def cmd_review(a):
     if st["rejections"] >= max_rej or st["gate_runs"] >= max_runs:
         hc.write_json(card.p("state.json"), st)
         hc.say("ESCALATE", f"ครบจำนวนรอบแล้ว ดู {card.rel}/review.md และ evidence.json",
-               f'หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน {SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"')
+               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน '
+               f'{SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"', user=USER_ESCALATE)
         return 0
     st["gate_runs"] += 1
     ev, base = run_gate(card, st["gate_runs"])
@@ -295,8 +361,8 @@ def cmd_review(a):
     st["review_rounds"] += 1
     rnd = st["review_rounds"]
     prev = render("review_prev.md", ROUND=rnd, CARD_DIR=card.rel) if rnd > 1 else ""
-    data = card.claude(render("review.md", KEY=card.key, CARD_DIR=card.rel, ROUND=rnd, PREV_NOTE=prev),
-                       REVIEW_TOOLS, "review_model", "review")
+    data = card.claude(render("review.md", KEY=card.key, CARD_DIR=card.rel, ROUND=rnd, PREV_NOTE=prev,
+                              LANG_RULE=card.lang_rule()), REVIEW_TOOLS, "review_model", "review")
     s = sections(data.get("result"))
     verdict = (s.get("VERDICT", "").split() or [""])[0].upper()
     if data.get("is_error") or verdict not in ("PASS", "FAIL"):
@@ -317,16 +383,17 @@ def cmd_review(a):
         card.p("gate2.md").write_text(page, encoding="utf-8")
         hc.write_json(card.p("state.json"), st)
         hc.say("READY_FOR_GATE2", page,
-               f'แสดงหน้า Gate 2 ข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
+               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
                f'{SELF} commit {card.key} "<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>" '
-               f"ถ้าผู้ใช้สั่งแก้ ให้แก้ตามนั้นแล้วรัน {SELF} review {card.key}")
+               f"ถ้าผู้ใช้สั่งแก้ ให้แก้ตามนั้นแล้วรัน {SELF} review {card.key}",
+               user='ตรวจผลข้างบน แล้วพิมพ์ "อนุมัติ Gate 2" เพื่อ commit หรือพิมพ์สิ่งที่ต้องแก้')
         return 0
     st["rejections"] += 1
     hc.write_json(card.p("state.json"), st)
     if st["rejections"] >= max_rej:
         hc.say("ESCALATE", f"Reviewer ตีกลับครบ {max_rej} รอบ:\n{s.get('FINDINGS', '')}",
-               f'แสดงข้างบนให้ผู้ใช้ตามตัวอักษร หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน '
-               f'{SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"')
+               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน '
+               f'{SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"', user=USER_ESCALATE)
     else:
         hc.say("FAIL", f"REVIEW รอบ {rnd} ไม่ผ่าน:\n{s.get('FINDINGS', '')}",
                f"แก้ตาม findings ข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) แล้วรัน {SELF} review {card.key}")
@@ -348,7 +415,8 @@ def cmd_commit(a):
     card = Card(a.key)
     ev = hc.read_json(card.p("evidence.json"), {})
     if ev.get("result") != "pass" or ev.get("review", {}).get("verdict") != "PASS":
-        hc.say("BLOCKED", "ยังไม่มี evidence ที่ผ่านทั้ง gate และ review", f"รัน {SELF} review {card.key}")
+        hc.say("BLOCKED", "ยังไม่มี evidence ที่ผ่านทั้ง gate และ review", f"รัน {SELF} review {card.key}",
+               user="ยังไม่ต้องทำอะไร งานยังไม่ผ่าน review Gemini จะรัน review ต่อ")
         return 1
     # Re-check everything cheap ourselves instead of trusting the JSON files.
     spec = hc.approved_spec(card.root, card.key)
@@ -356,9 +424,13 @@ def cmd_commit(a):
         hc.say("BLOCKED", "spec ไม่ตรงกับที่อนุมัติ Gate 1 หรือไม่ตรงกับตอน review",
                "แจ้งผู้ใช้ว่าต้องอนุมัติ spec ใหม่และ review ใหม่ แล้วหยุดรอคำสั่ง")
         return 1
-    tree, base = hc.code_tree(card.root)
-    if tree != ev["tree"]:
-        hc.say("STALE", "โค้ดเปลี่ยนหลังจาก review ผ่านแล้ว", f"รัน {SELF} review {card.key} ใหม่")
+    tree, base = hc.code_tree(card.root, card.docs)
+    drift = hc.code_drift(card.root, ev["tree"], tree, card.docs)  # docs and .arbiter/ may move freely
+    if drift:
+        hc.say("STALE", "ไฟล์เหล่านี้เปลี่ยนหลังจาก review ผ่านแล้ว:\n" + "\n".join(f"- {f}" for f in drift),
+               f"แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร ห้ามแก้ ย้อน stash หรือลบไฟล์เหล่านี้เอง แล้วรอ "
+               f"ถ้าผู้ใช้สั่งให้ตรวจใหม่ ให้รัน {SELF} review {card.key}",
+               user='ดูว่าไฟล์ข้างบนใครแก้ ถ้าแก้ได้ พิมพ์ "review ใหม่" เพื่อตรวจรอบใหม่ ถ้าไม่ควรแก้ ให้บอก Gemini ว่าจะจัดการอย่างไร')
         return 0
     scope = hc.parse_block(spec)["scope_allow"]
     outside = [f for f in hc.changed_files(card.root, base, tree) if not hc.in_scope(f, scope)]
@@ -376,8 +448,9 @@ def cmd_commit(a):
     msg = (a.message or f"feat({card.key.lower()}): {title}") + \
         f"\n\nArbiter-Card: {card.key}\nArbiter-Tree: {tree}\nArbiter-Gate2: {ap['gate2']['at']}\n"
     hc.git("add", "-A", cwd=card.root)
+    pending_docs = hc.unstage_docs(card.root, card.docs)  # docs go in their own commit, never the card's
     staged = hc.git("write-tree", cwd=card.root).strip()
-    if not hc.same_code(card.root, staged, tree):  # assume-unchanged, skip-worktree, force-added files...
+    if not hc.same_code(card.root, staged, tree, card.docs):  # assume-unchanged, skip-worktree, force-added...
         hc.git("reset", "-q", cwd=card.root)
         hc.say("ERROR", "สิ่งที่ stage อยู่ใน git index ไม่ตรงกับโค้ดที่ review ผ่าน (มีไฟล์ที่ถูก force-add, "
                "assume-unchanged หรือ skip-worktree) จึงยกเลิก commit และ unstage แล้ว",
@@ -390,8 +463,17 @@ def cmd_commit(a):
         return 1
     (hc.hdir(card.root) / "ACTIVE").unlink(missing_ok=True)
     sha = hc.git("rev-parse", "--short", "HEAD", cwd=card.root).strip()
-    hc.say("COMMITTED", f"commit {sha}: {card.key}",
-           f"ขยับการ์ด {card.key} บน Jira ตามกฎ lifecycle (Story ไป UAT / QA, Task ไป Done) แล้วแจ้งผู้ใช้")
+    body, user = f"commit {sha}: {card.key}", "ไม่ต้องทำอะไร งานนี้เสร็จแล้ว"
+    if card.local:
+        nxt = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร การ์ด LOCAL ไม่มีบน Jira ห้ามแตะ Jira"
+    else:
+        nxt = (f"แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วขยับการ์ด {card.key} บน Jira ตามกฎ lifecycle "
+               f"(Story ไป UAT / QA, Task ไป Done)")
+        user = f"ไม่ต้องทำอะไร Gemini จะขยับการ์ด {card.key} บน Jira ให้"
+    if pending_docs:
+        body += "\n\nเอกสารนอกการ์ดที่เปลี่ยนแต่ไม่ได้รวมใน commit นี้:\n" + "\n".join(f"- {f}" for f in pending_docs)
+        user += " · เอกสารข้างบนยังไม่ได้ commit ถ้าต้องการ ให้สั่ง Gemini หรือ commit เอง (ไม่ต้องใช้ --no-verify)"
+    hc.say("COMMITTED", body, nxt, user=user)
     return 0
 
 
@@ -399,7 +481,8 @@ def cmd_status(a):
     root = hc.repo_root()
     key = (a.key or hc.active_key(root) or "").upper()
     if not key:
-        hc.say("INFO", "ไม่มีการ์ด ACTIVE", f"เริ่มการ์ดด้วย {SELF} spec KS-xx")
+        hc.say("INFO", "ไม่มีการ์ด ACTIVE",
+               f'เริ่มการ์ดด้วย {SELF} spec <รหัสการ์ด> หรืองานที่ไม่มีการ์ด {SELF} spec --local "<โจทย์>"')
         return 0
     card = Card(key)
     files = sorted(p.name for p in card.dir.iterdir()) if card.dir.exists() else []
@@ -422,7 +505,9 @@ def cmd_status(a):
 def main():
     ap = argparse.ArgumentParser(prog="arbiter", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("spec").add_argument("key")
+    sp = sub.add_parser("spec")
+    sp.add_argument("key", nargs="?")
+    sp.add_argument("--local", nargs="+", help="งานที่ไม่มีการ์ด Jira: ข้อความโจทย์ของผู้ใช้ตามตัวอักษร")
     for name in ("answer", "approve", "commit"):
         sp = sub.add_parser(name)
         sp.add_argument("key")

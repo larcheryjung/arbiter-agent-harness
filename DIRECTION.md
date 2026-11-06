@@ -166,6 +166,16 @@ arbiter-agent-harness/
 - `git commit --no-verify` และ `-c core.hooksPath=` ข้าม hook ได้ ต้องใช้ CI ตรวจ trailer `Arbiter-Tree` จึงจะปิดได้
 - แนวทางแก้รอบถัดไป: เก็บไฟล์หลักฐานตัวจริงไว้ใน `.git/arbiter/` · ให้ approve ต้องยืนยันด้วยรหัสที่แสดงให้คนเห็นเท่านั้น · ตรวจ transcript อัตโนมัติ
 
+## 11.2 v0.2.0 (2026-11-06, หลังการ์ดจริงใบแรก KS-118)
+
+- **การ์ด `LOCAL-n`**: `/feature <โจทย์>` เป็นงานที่ไม่มีการ์ด Jira arbiter ตั้งรหัสเอง เก็บข้อความผู้ใช้ตามตัวอักษรใน `intent.md` Claude ไม่มีสิทธิ์เรียก Jira เลย และไม่ต้องขยับการ์ดหลัง commit
+- **บรรทัด `▶ สิ่งที่คุณต้องทำ`** อยู่ในทุกหน้าที่ต้องรอคน (คำถาม, Gate 1, Gate 2, STALE, ESCALATE, ERROR, BLOCKED, COMMITTED)
+- **STALE แสดงชื่อไฟล์** และ workflow ห้าม Gemini ใช้ checkout/restore/reset/stash/clean หรือย้อนไฟล์ที่การ์ดไม่ได้แก้
+- **`docs_allow`** ใน config: commit ที่มีแต่เอกสารผ่าน hook ได้โดยไม่ต้องมีการ์ด (ยังสแกน secret) · ระหว่างทำการ์ด เอกสารที่เปลี่ยนไม่นับเป็น scope ไม่ทำให้ STALE และไม่ถูกรวมใน commit ของการ์ด · `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` ไม่นับเป็นเอกสารเสมอ
+- **config ใช้ฉบับที่ commit แล้วเท่านั้น**: arbiter หยุดทำงานถ้า `config.json` ในเครื่องไม่ตรงกับ HEAD และ hook อ่าน `docs_allow` จาก HEAD (กัน agent ขยาย `docs_allow` หรือแก้ verify เองในเครื่อง)
+- **hook ต้องเห็นการอนุมัติ Gate 2** ของ tree นั้นใน `approvals.json` ไม่เชื่อ env `ARBITER_COMMIT_TREE` อย่างเดียว (ยังเป็นไฟล์ที่ agent เขียนได้ จึงแค่บังคับให้ต้องปลอมการอนุมัติของคน ซึ่งเห็นได้ใน transcript)
+- **ภาษา**: Claude เขียน spec/คำถาม/review ตามภาษาของข้อความล่าสุดที่ผู้ใช้พิมพ์ในการ์ด ไม่มีให้ใช้ `language` ใน config (ค่าตั้งต้น `th`)
+
 ## 12. สิ่งที่ต้องทดสอบบนเครื่องจริงก่อน (ขั้น 0)
 
 - [x] `claude -p --allowedTools "Read"` แล้วสั่งให้ Write **ไม่ค้าง** ถูกปฏิเสธใน 12 วินาที ได้ exit 0 และมีรายการใน `permission_denials` ของ JSON ให้ script อ่านได้ (2026-11-04, claude 2.1.281)

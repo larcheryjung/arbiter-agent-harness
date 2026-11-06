@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Install the arbiter into a project (idempotent).
 
-    python install.py --project C:/path/to/repo --verify "unit=powershell -NoProfile -File run-unit-tests.ps1"
+    python install.py --project C:/path/to/repo --verify "unit=powershell -NoProfile -File run-unit-tests.ps1" \
+        --docs-allow "docs/**" --docs-allow "*.md"
 
 Creates .arbiter/ (config, tasks/), points git core.hooksPath at floor/git, installs the Antigravity workflow.
+Re-running upgrades: keeps the existing config, adds keys new versions need, and sets docs_allow if given.
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -20,6 +23,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--project", required=True)
     ap.add_argument("--verify", action="append", default=[], help='"name=command", repeatable')
+    ap.add_argument("--docs-allow", action="append", help='glob of docs committed without a card, repeatable')
     ap.add_argument("--force-hooks", action="store_true", help="override an existing core.hooksPath")
     a = ap.parse_args()
 
@@ -29,16 +33,23 @@ def main():
     done = []
 
     cfg_path = h / "config.json"
+    defaults = {"arbiter_version": hc.VERSION, "key_pattern": r"KS-\d+", "language": "th", "docs_allow": [],
+                "verify": [], "verify_timeout_sec": 3600, "max_rejections": 2, "max_gate_runs": 6,
+                "claude": {"spec_model": "opus", "review_model": "opus", "effort": "high", "timeout_sec": 1200,
+                           "require_jira": True}}
     if not cfg_path.exists():
-        verify = [{"name": v.split("=", 1)[0].strip(), "cmd": v.split("=", 1)[1].strip()} for v in a.verify]
-        hc.write_json(cfg_path, {
-            "arbiter_version": hc.VERSION, "key_pattern": r"KS-\d+", "verify": verify,
-            "verify_timeout_sec": 3600, "max_rejections": 2, "max_gate_runs": 6,
-            "claude": {"spec_model": "opus", "review_model": "opus", "effort": "high", "timeout_sec": 1200,
-                       "require_jira": True}})
+        cfg = dict(defaults, verify=[{"name": v.split("=", 1)[0].strip(), "cmd": v.split("=", 1)[1].strip()}
+                                     for v in a.verify])
         done.append(f"สร้าง {cfg_path}")
     else:
-        done.append(f"มี {cfg_path} อยู่แล้ว (ไม่แตะ)")
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        added = [k for k in defaults if k not in cfg]
+        cfg = {**defaults, **cfg, "arbiter_version": hc.VERSION}
+        done.append(f"มี {cfg_path} อยู่แล้ว (คงค่าเดิม" + (f", เพิ่ม {', '.join(added)})" if added else ")"))
+    if a.docs_allow is not None:
+        cfg["docs_allow"] = a.docs_allow
+        done.append(f"docs_allow = {a.docs_allow}")
+    hc.write_json(cfg_path, cfg)
 
     gi = h / ".gitignore"
     if not gi.exists():
@@ -61,9 +72,10 @@ def main():
 
     print("\n".join(f"- {d}" for d in done))
     print(f"\narbiter {hc.VERSION} ติดตั้งที่ {root} แล้ว")
-    print("ขั้นสุดท้าย (คนทำเอง ครั้งเดียว): commit การติดตั้ง ซึ่งต้องข้าม pre-commit เพราะยังไม่มีการ์ด ACTIVE\n"
-          "  git add .arbiter .agent/workflows/feature.md\n"
-          '  git commit --no-verify -m "chore: install arbiter"')
+    print("ขั้นสุดท้าย (คนทำเอง): ตรวจ .arbiter/config.json แล้ว commit การติดตั้ง ซึ่งต้องข้าม pre-commit เพราะ hook\n"
+          "กันไม่ให้ agent แก้ config (arbiter จะไม่ทำงานจนกว่า config ในเครื่องจะตรงกับฉบับที่ commit)\n"
+          "  git add .arbiter/config.json .arbiter/.gitignore .agent/workflows/feature.md\n"
+          f'  git commit --no-verify -m "chore: install arbiter {hc.VERSION}"')
     return 0
 
 

@@ -12,3 +12,5 @@
 ===QUESTIONS===
 <คำถาม หรือ NONE>
 ===END===
+
+{{LANG_RULE}}

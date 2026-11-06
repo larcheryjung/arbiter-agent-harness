@@ -86,14 +86,17 @@ class ArbiterTest(unittest.TestCase):
         status = next((ln[8:].split()[0] for ln in r.stdout.splitlines() if ln.startswith("STATUS: ")), None)
         return status, r.stdout
 
-    def card(self, name):
-        return self.repo / ".arbiter" / "tasks" / "KS-1" / name
+    def card(self, name, key="KS-1"):
+        return self.repo / ".arbiter" / "tasks" / key / name
 
-    def cfg(self, **kw):
+    def cfg(self, commit=True, **kw):
         p = self.repo / ".arbiter" / "config.json"
         c = json.loads(p.read_text(encoding="utf-8"))
         c.update(kw)
         p.write_text(json.dumps(c), encoding="utf-8")
+        if commit:  # arbiter only trusts the committed config; a human commits it past the hook
+            self.git("add", ".arbiter/config.json")
+            self.git("commit", "-q", "--no-verify", "-m", "config")
 
     def to_gate2(self, content="print('a')\n"):
         self.to_gate1()
@@ -113,11 +116,15 @@ class ArbiterTest(unittest.TestCase):
         st, out = self.h("spec", "KS-1")
         self.assertEqual(st, "NEEDS_ANSWERS")
         self.assertIn("สีอะไร?", out)
+        self.assertIn("▶ สิ่งที่คุณต้องทำ: ตอบคำถาม", out)
+        self.assertIn("ภาษาไทย", self.calls()[0]["prompt"])  # config default
+        self.assertIn("jira_get_issue", self.calls()[0]["prompt"])
         self.assertEqual((self.repo / ".arbiter" / "ACTIVE").read_text(encoding="utf-8"), "KS-1")
         self.assertEqual(self.h("approve", "KS-1", "ok")[0], "BLOCKED")  # open questions
 
-        st, _ = self.h("answer", "KS-1", "1 เอา", "น้ำเงิน")
+        st, out = self.h("answer", "KS-1", "1 เอา", "น้ำเงิน")
         self.assertEqual(st, "READY_FOR_GATE1")
+        self.assertIn('พิมพ์ "อนุมัติ Gate 1"', out)
         self.assertIn("1 เอา น้ำเงิน", self.card("answers.md").read_text(encoding="utf-8"))
         second = self.calls()[1]
         self.assertIn("--resume", second["args"])
@@ -130,6 +137,7 @@ class ArbiterTest(unittest.TestCase):
         self.queue([review_resp("PASS")])
         st, out = self.h("review", "KS-1")
         self.assertEqual(st, "READY_FOR_GATE2", out)
+        self.assertIn('พิมพ์ "อนุมัติ Gate 2"', out)
         ev = json.loads(self.card("evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(ev["result"], "pass")
         self.assertEqual(sorted(ev["changed_files"]), ["src/app.py", "src/new_module.py"])
@@ -137,6 +145,7 @@ class ArbiterTest(unittest.TestCase):
 
         st, out = self.h("commit", "KS-1", "อนุมัติ Gate 2")
         self.assertEqual(st, "COMMITTED", out)
+        self.assertIn("Jira", out)
         log = self.git("log", "-1", "--format=%B").stdout
         self.assertIn(f"Arbiter-Tree: {ev['tree']}", log)
         self.assertEqual(self.git("status", "--porcelain").stdout.strip(), "")
@@ -219,7 +228,123 @@ class ArbiterTest(unittest.TestCase):
     def test_commit_refuses_code_changed_after_review(self):
         self.to_gate2()
         self.write("src/app.py", "print('sneaky')\n")
-        self.assertEqual(self.h("commit", "KS-1", "ok")[0], "STALE")
+        st, out = self.h("commit", "KS-1", "ok")
+        self.assertEqual(st, "STALE")
+        self.assertIn("- src/app.py", out)  # says which file, so nobody guesses
+        self.assertIn("▶ สิ่งที่คุณต้องทำ", out)
+        self.assertIn("ห้ามแก้ ย้อน stash หรือลบ", out)
+
+    # ---------- LOCAL cards (no Jira) ----------
+    def test_local_card_from_users_words_to_commit(self):
+        self.queue([spec_resp(tools=[])])  # no Jira read, and none needed
+        st, out = self.h("spec", "--local", "เพิ่ม", "endpoint ตรวจคิว")
+        self.assertEqual(st, "READY_FOR_GATE1", out)
+        self.assertIn("LOCAL-1", out)
+        self.assertEqual(self.card("intent.md", "LOCAL-1").read_text(encoding="utf-8"), "เพิ่ม endpoint ตรวจคิว\n")
+        call = self.calls()[0]
+        self.assertIn(".arbiter/tasks/LOCAL-1/intent.md", call["prompt"])
+        self.assertNotIn("jira_get_issue", call["prompt"])
+        self.assertNotIn("jira", call["args"][call["args"].index("--allowedTools") + 1])
+        self.assertEqual(self.h("approve", "LOCAL-1", "อนุมัติ Gate 1")[0], "APPROVED_GATE1")
+        self.write("src/app.py", "print('q')\n")
+        self.queue([review_resp("PASS")])
+        self.assertEqual(self.h("review", "LOCAL-1")[0], "READY_FOR_GATE2")
+        st, out = self.h("commit", "LOCAL-1", "อนุมัติ Gate 2")
+        self.assertEqual(st, "COMMITTED", out)
+        self.assertIn("ห้ามแตะ Jira", out)
+        self.assertIn("Arbiter-Card: LOCAL-1", self.git("log", "-1", "--format=%B").stdout)
+        self.queue([spec_resp()])
+        st, out = self.h("spec", "--local", "งานที่สอง")
+        self.assertIn("LOCAL-2", out)  # numbering continues
+
+    def test_local_key_needs_users_words(self):
+        st, out = self.h("spec", "LOCAL-7")
+        self.assertEqual(st, "ERROR")
+        self.assertIn("--local", out)
+        self.assertEqual(self.h("spec", "KS-1", "--local", "x")[0], "ERROR")
+
+    def test_language_follows_the_users_latest_words(self):
+        self.queue([spec_resp("1. ? [default: a]"), spec_resp()])
+        self.h("spec", "--local", "Add a health endpoint that reports queue depth")
+        self.assertIn("English", self.calls()[0]["prompt"])
+        self.h("answer", "LOCAL-1", "เอาแบบ a")  # switches back to Thai
+        self.assertIn("ภาษาไทย", self.calls()[1]["prompt"])
+        self.h("approve", "LOCAL-1", "ok")
+        self.write("src/app.py", "print('q')\n")
+        self.queue([review_resp("PASS")])
+        self.h("review", "LOCAL-1")
+        self.assertIn("ภาษาไทย", self.calls()[2]["prompt"])
+
+    # ---------- docs_allow ----------
+    def test_doc_change_during_card_is_kept_out_of_the_card(self):
+        self.cfg(docs_allow=["*.md"])
+        self.to_gate1()
+        self.write("src/app.py", "print('a')\n")
+        self.write("README.md", "doc edit\n")  # outside scope, but a doc: not a scope failure
+        self.queue([review_resp("PASS")])
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE2", out)
+        self.assertNotIn("README.md", self.card("review-input.diff").read_text(encoding="utf-8"))
+        self.write("README.md", "doc edited again\n")  # no STALE for docs
+        st, out = self.h("commit", "KS-1", "อนุมัติ Gate 2")
+        self.assertEqual(st, "COMMITTED", out)
+        self.assertIn("- README.md", out)
+        self.assertNotIn("README.md", self.git("show", "--name-only", "--format=", "HEAD").stdout)
+        self.assertIn("README.md", self.git("status", "--porcelain").stdout)
+        self.git("add", "README.md")  # docs-only commit passes the hook without a card
+        self.assertEqual(self.git("commit", "-q", "-m", "docs", check=False).returncode, 0)
+
+    def test_human_doc_commit_mid_card_is_not_stale_and_not_reverted(self):
+        self.cfg(docs_allow=["*.md"])
+        self.to_gate2()
+        self.write("README.md", "human report\n")
+        self.git("add", "README.md")
+        self.assertEqual(self.git("commit", "-q", "-m", "docs", check=False).returncode, 0)
+        st, out = self.h("commit", "KS-1", "อนุมัติ Gate 2")
+        self.assertEqual(st, "COMMITTED", out)
+        self.assertEqual(self.git("show", "HEAD:README.md").stdout, "human report\n")
+
+    def test_verify_that_rewrites_a_doc_does_not_break_tree_stable(self):
+        py = Path(sys.executable).as_posix()
+        self.cfg(docs_allow=["*.md"], verify=[{"name": "report", "cmd": f"{py} -c \"open('README.md','w').write('r')\""}])
+        self.to_gate1()
+        self.write("src/app.py", "print('a')\n")
+        self.queue([review_resp("PASS")])
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE2", out)
+
+    def test_agent_rule_files_are_never_docs(self):
+        self.cfg(docs_allow=["*.md"])
+        self.write("AGENTS.md", "new rules\n")
+        self.git("add", "AGENTS.md")
+        r = self.git("commit", "-q", "-m", "x", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertFalse(hc.is_doc("AGENTS.md", ["*.md"]))
+        self.assertFalse(hc.is_doc("sub/claude.md", ["**"]))
+        self.assertFalse(hc.is_doc(".env", ["**"]))
+        self.assertTrue(hc.is_doc("docs/a/b.md", ["docs/**"]))
+
+    def test_uncommitted_config_edit_is_refused(self):
+        self.to_gate1()
+        self.cfg(commit=False, docs_allow=["**"])  # an agent widening docs_allow locally
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "ERROR")
+        self.assertIn("config.json", out)
+        self.write("src/app.py", "print('x')\n")
+        self.git("add", "src/app.py")
+        r = self.git("commit", "-q", "-m", "x", check=False)  # the hook reads HEAD's docs_allow, not the local one
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_precommit_needs_gate2_not_just_the_env(self):
+        self.to_gate1()
+        self.write("src/app.py", "print('forged')\n")
+        self.git("add", "src/app.py")
+        tree = self.git("write-tree").stdout.strip()
+        env = dict(os.environ, **{hc.COMMIT_ENV: tree})
+        r = subprocess.run(["git", "commit", "-q", "-m", "x"], cwd=self.repo, capture_output=True, text=True,
+                           encoding="utf-8", env=env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Gate 2", r.stderr)
 
     def test_commit_refuses_index_that_differs_from_reviewed_tree(self):  # review finding 2
         self.to_gate2()

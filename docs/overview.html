@@ -248,10 +248,11 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 git add .arbiter .agent/workflows/feature.md
 git commit --no-verify -m "chore: install arbiter"</code></pre>
   <h3>ใช้งานประจำวัน</h3>
-  <p>ใน panel ของ Antigravity พิมพ์ <code>/feature KS-160</code> แล้วตอบคำถามและอนุมัติตามที่ Gemini แสดง ไม่ต้องจำคำสั่งอื่น</p>
+  <p>ใน panel ของ Antigravity พิมพ์ <code>/feature KS-160</code> หรือ <code>/feature &lt;โจทย์&gt;</code> สำหรับงานที่ไม่มีการ์ด Jira แล้วทำตามบรรทัด ▶ สิ่งที่คุณต้องทำ ไม่ต้องจำคำสั่งอื่น</p>
   <div class="tbl"><table>
     <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
     <tr><td><code>spec KS-xx</code></td><td>เริ่มการ์ด</td></tr>
+    <tr><td><code>spec --local "..."</code></td><td>เริ่มงานที่ไม่มีการ์ด Jira (arbiter ตั้งรหัส LOCAL-n ให้) (v0.2.0)</td></tr>
     <tr><td><code>answer KS-xx "..."</code></td><td>ตอบคำถาม หรือขอแก้ spec (การอนุมัติ Gate 1 จะถูกยกเลิก)</td></tr>
     <tr><td><code>approve KS-xx "..."</code></td><td>Gate 1</td></tr>
     <tr><td><code>review KS-xx [--continue "..."]</code></td><td>หลังเขียนโค้ดเสร็จ / ให้ทำต่อหลัง ESCALATE</td></tr>

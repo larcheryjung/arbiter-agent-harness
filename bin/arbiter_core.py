@@ -7,11 +7,14 @@ import subprocess
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 BLOCK_RE = re.compile(r"```arbiter[ \t]*\r?\n(.*?)```", re.S)
 KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
+LOCAL_RE = re.compile(r"LOCAL-(\d+)")  # work with no Jira card; the brief is the user's own words in intent.md
 ARBITER_DIR = ".arbiter/"
+CONFIG_REL = ".arbiter/config.json"
+AGENT_RULE_FILES = re.compile(r"(^|/)(AGENTS|CLAUDE|GEMINI)\.md$", re.I)  # agents' own rules: never "just docs"
 CODE_ONLY = (".", ":(exclude).arbiter")  # pathspec: everything except arbiter artifacts
 COMMIT_ENV = "ARBITER_COMMIT_TREE"  # set only by `arbiter commit`; the hook re-checks the index against it
 
@@ -51,11 +54,29 @@ def card_dir(root, key):
     return hdir(root) / "tasks" / key
 
 
+def committed_config(root):
+    """The config as committed at HEAD (changed only by a human commit, since the hook blocks it), or None."""
+    r = git("show", f"HEAD:{CONFIG_REL}", cwd=root, check=False)
+    if r.returncode != 0:
+        return None
+    try:
+        return json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
 def load_config(root):
     p = hdir(root) / "config.json"
     if not p.exists():
         raise RuntimeError(f"ไม่พบ {p} (ยังไม่ได้ติดตั้ง arbiter ในโปรเจกต์นี้ ให้รัน install.py ก่อน)")
-    return json.loads(p.read_text(encoding="utf-8"))
+    work = json.loads(p.read_text(encoding="utf-8"))
+    head = committed_config(root)
+    if head is None:  # fresh install, not committed yet
+        return work
+    if head != work:  # an agent could otherwise loosen verify/docs_allow without anyone committing it
+        raise RuntimeError(f"{CONFIG_REL} ในเครื่องไม่ตรงกับฉบับที่ commit ไว้ arbiter จะทำงานต่อเมื่อคนตรวจแล้ว "
+                           f"commit เอง (git commit --no-verify) หรือย้อนไฟล์กลับ (git checkout -- {CONFIG_REL})")
+    return head
 
 
 def active_key(root):
@@ -140,14 +161,35 @@ def in_scope(path, patterns):
     return any(glob_re(p).fullmatch(path) for p in patterns)
 
 
-def code_tree(root):
-    """Hash of the working tree as it would be committed, excluding .arbiter/. No commit needed."""
+def is_doc(path, patterns):
+    """A file in docs_allow: committed on its own without a card, never part of a card's reviewed tree."""
+    path = path.replace("\\", "/")
+    if path.startswith(ARBITER_DIR) or AGENT_RULE_FILES.search(path) or BLOCKED_FILES.search(path):
+        return False
+    return any(glob_re(p).fullmatch(path) for p in patterns or [])
+
+
+def unstage_docs(root, docs, env=None):
+    """Reset docs_allow files in the index back to HEAD. Returns the paths that were unstaged."""
+    base = head_or_empty(root)
+    env = dict(env or os.environ, GIT_LITERAL_PATHSPECS="1")
+    staged = nul_list(git("diff-index", "--cached", "-z", "--no-renames", "--name-only", base, cwd=root, env=env))
+    found = [f for f in staged if is_doc(f, docs)]
+    if found:
+        args = ("reset", "-q", "HEAD") if base == "HEAD" else ("rm", "--cached", "-q", "--ignore-unmatch")
+        git(*args, "--pathspec-from-file=-", "--pathspec-file-nul", cwd=root, env=env, stdin="\0".join(found))
+    return found
+
+
+def code_tree(root, docs=()):
+    """Hash of the working tree as it would be committed, excluding .arbiter/ and docs_allow changes."""
     idx = Path(root) / git("rev-parse", "--git-path", "arbiter-index", cwd=root).strip()
     env = dict(os.environ, GIT_INDEX_FILE=str(idx))
     has_head = git("rev-parse", "--verify", "-q", "HEAD", cwd=root, check=False).returncode == 0
     try:
         git("read-tree", "HEAD" if has_head else "--empty", cwd=root, env=env)
         git("add", "-A", "--", *CODE_ONLY, cwd=root, env=env)
+        unstage_docs(root, docs, env=env)
         tree = git("write-tree", cwd=root, env=env).strip()
     finally:
         idx.unlink(missing_ok=True)
@@ -162,20 +204,36 @@ def diff_text(root, base, tree):
     return git("diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", base, tree, cwd=root)
 
 
-def same_code(root, tree_a, tree_b):
-    """True if two trees are identical outside .arbiter/."""
-    r = git("diff-tree", "-r", "--quiet", tree_a, tree_b, "--", *CODE_ONLY, cwd=root, check=False)
-    return r.returncode == 0
+def code_drift(root, tree_a, tree_b, docs=()):
+    """Paths that differ between two trees, ignoring .arbiter/ and docs_allow files."""
+    out = git("diff-tree", "-r", "-z", "--no-renames", "--name-only", tree_a, tree_b, "--", *CODE_ONLY, cwd=root)
+    return [f for f in nul_list(out) if not is_doc(f, docs)]
+
+
+def same_code(root, tree_a, tree_b, docs=()):
+    return not code_drift(root, tree_a, tree_b, docs)
 
 
 def head_or_empty(root):
     return "HEAD" if git("rev-parse", "--verify", "-q", "HEAD", cwd=root, check=False).returncode == 0 else EMPTY_TREE
 
 
-def say(status, body="", nxt=None):
-    """Talk to the orchestrating agent. Status travels in text: PowerShell -Command collapses exit codes."""
+USER_DEFAULT = {
+    "ERROR": "งานหยุดอยู่ อ่านข้อความข้างบน ถ้าไม่แน่ใจสาเหตุ ให้ถาม Claude Code ตรวจ (ไม่ต้องให้ Gemini เดา)",
+    "BLOCKED": "งานหยุดรอคุณ อ่านเหตุผลข้างบน แล้วบอก Gemini ว่าจะทำอย่างไรต่อ",
+}
+
+
+def say(status, body="", nxt=None, user=None):
+    """Talk to the orchestrating agent. Status travels in text: PowerShell -Command collapses exit codes.
+
+    `user` is the line telling the human what to do next; it sits inside the text the agent must show verbatim."""
+    user = user or USER_DEFAULT.get(status)
     if body:
         print(body.rstrip())
+        print()
+    if user:
+        print(f"▶ สิ่งที่คุณต้องทำ: {user}")
         print()
     print(f"STATUS: {status}")
     if nxt:
