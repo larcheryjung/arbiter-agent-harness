@@ -5,65 +5,26 @@ The orchestrating agent (Gemini) only passes pointers (card key) and the user's 
 Prompts to Claude are built here from fixed templates; verdicts come from this script.
 """
 import argparse
-import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arbiter_core as hc  # noqa: E402
+import arbiter_claude as ac  # noqa: E402
+from arbiter_claude import now, render, sections  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 SELF = f'python "{Path(__file__).resolve()}"'
-STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION",
-             "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_SESSION_ATTENDED")
-BUILTIN_TOOLS = "Read,Grep,Glob"  # --tools: the ONLY built-ins that exist in the session (no Bash/Edit/Write)
-SPEC_TOOLS = "Read,Grep,Glob,mcp__jira__jira_get_issue,mcp__jira__jira_search"
-LOCAL_SPEC_TOOLS = BUILTIN_TOOLS  # LOCAL cards have no Jira card, so no Jira access at all
-REVIEW_TOOLS = BUILTIN_TOOLS
-# Written in the target language itself: a model reading a Thai prompt drifts back to Thai otherwise.
-LANG_RULES = {
-    "th": "สำคัญ: เขียนเนื้อหาทั้งหมดเป็นภาษาไทย ชื่อไฟล์ คลาส เมธอด คำสั่ง และศัพท์เทคนิคใช้ตามต้นฉบับ "
-          "marker `===...===` และบล็อก ```arbiter ห้ามแปล",
-    "en": "IMPORTANT: Write all prose in English, even though these instructions are in Thai. Keep file, class "
-          "and method names, commands and the `===...===` markers and ```arbiter block exactly as they are.",
-}
+SPEC_TOOLS = f"{ac.BUILTIN_TOOLS},{ac.JIRA_READ_TOOLS}"
+LOCAL_SPEC_TOOLS = ac.BUILTIN_TOOLS  # LOCAL cards have no Jira card, so no Jira access at all
+REVIEW_TOOLS = ac.BUILTIN_TOOLS
 USER_ESCALATE = 'ตัดสินว่าจะให้ทำต่อหรือหยุด ถ้าให้ทำต่อ พิมพ์ "ทำต่อ" พร้อมแนวทางที่ต้องการ'
-THAI = re.compile(r"[฀-๿]")
-LATIN = re.compile(r"[A-Za-z]")
-DENY_TOOLS = "Edit,Write,NotebookEdit,Bash,PowerShell"
 SHELL_META = re.compile(r"[|&;<>`]")
-
-
-def now():
-    return datetime.now().isoformat(timespec="seconds")
-
-
-def render(name, **kw):
-    text = (hc.HOME / "prompts" / name).read_text(encoding="utf-8")
-    for k, v in kw.items():
-        text = text.replace("{{" + k + "}}", str(v))
-    return text
-
-
-def sections(text):
-    out, cur = {}, None
-    for line in (text or "").splitlines():
-        m = re.fullmatch(r"===([A-Z_]+)===", line.strip())
-        if m:
-            cur = m.group(1)
-            if cur == "END":
-                break
-            out[cur] = []
-        elif cur:
-            out[cur].append(line)
-    return {k: "\n".join(v).strip() for k, v in out.items()}
 
 
 class Card:
@@ -89,84 +50,32 @@ class Card:
 
     def spec_prompt(self):
         source = render("source_local.md" if self.local else "source_jira.md", KEY=self.key, CARD_DIR=self.rel)
+        origin = hc.spike_origin(self.root, self.key)
+        if origin:  # decided in a spike: Claude reads the approved plan itself instead of anyone retelling it
+            source += render("source_spike.md", KEY=self.key, SPIKE_DIR=origin[0], CARD_ID=origin[1])
         return render("spec.md", SOURCE=source, KEY=self.key, CARD_DIR=self.rel, LANG_RULE=self.lang_rule())
 
     def lang_rule(self):
-        code = self.lang()
-        return LANG_RULES.get(code, f"IMPORTANT: Write all prose in the language with code '{code}'.")
+        return ac.lang_rule(self.lang())
 
     def lang(self):
         """Language code of the user's latest decisive words on this card (intent, answers), else `language`."""
         texts = [self.p("intent.md").read_text(encoding="utf-8")] if self.p("intent.md").exists() else []
         if self.p("answers.md").exists():
             texts += re.split(r"^## .*$", self.p("answers.md").read_text(encoding="utf-8"), flags=re.M)
-        code = self.cfg.get("language", "th")
-        for t in reversed(texts):
-            if THAI.search(t):
-                code = "th"
-                break
-            if len(LATIN.findall(t)) >= 20:  # short replies like "1a 2b" decide nothing
-                code = "en"
-                break
-        return code
+        return ac.lang_of(texts, self.cfg.get("language", "th"))
 
     def claude(self, prompt, tools, model_key, mode, resume=None):
-        override = os.environ.get("ARBITER_CLAUDE_CMD")
-        cmd = override.split("|") if override else [shutil.which("claude") or "claude"]
         c = self.cfg.get("claude", {})
-        args = cmd + ["-p", "--output-format", "stream-json", "--verbose",
-                      "--model", os.environ.get("ARBITER_MODEL") or c.get(model_key, "opus")]
-        if c.get("effort"):
-            args += ["--effort", c["effort"]]
-        if resume:
-            args += ["--resume", resume]
-        args += ["--permission-mode", "default", "--tools", BUILTIN_TOOLS,
-                 "--disallowedTools", DENY_TOOLS, "--allowedTools", tools]
-        env = {k: v for k, v in os.environ.items() if k not in STRIP_ENV}
-        r = subprocess.run(args, cwd=self.root, input=prompt, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", env=env, timeout=c.get("timeout_sec", 1200))
-        data = parse_stream(r.stdout) or {
-            "is_error": True, "result": f"(exit {r.returncode}) {(r.stderr or r.stdout)[-800:]}", "tool_calls": []}
-        data["jira_read"] = any(t["ok"] and t["name"].endswith("jira_get_issue")
-                                and str(t["input"].get("issue_key", "")).upper() == self.key
-                                for t in data["tool_calls"])
-        with self.p("sessions.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps({"at": now(), "mode": mode, "session_id": data.get("session_id"),
-                                 "resumed": resume, "is_error": bool(data.get("is_error")),
-                                 "cost_usd": data.get("total_cost_usd"),
-                                 "denials": len(data.get("permission_denials") or []),
-                                 "jira_read": data["jira_read"]}) + "\n")
-        return data
+        return ac.call(self.root, c, prompt, tools, c.get(model_key, "opus"), log=self.p("sessions.jsonl"),
+                       mode=mode, key=self.key, resume=resume)
 
     def require_jira(self):
         return not self.local and self.cfg.get("claude", {}).get("require_jira", True)
 
     def last_session(self, modes):
-        p = self.p("sessions.jsonl")
-        rows = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()] if p.exists() else []
-        rows = [r for r in rows if r["mode"] in modes and r.get("session_id") and not r.get("is_error")]
+        rows = [r for r in ac.session_rows(self.p("sessions.jsonl")) if r["mode"] in modes and r.get("session_id") and not r.get("is_error")]
         return rows[-1]["session_id"] if rows else None
-
-
-def parse_stream(out):
-    """Fold `claude -p --output-format stream-json` into the final result event + every tool call and its outcome."""
-    calls, result = {}, None
-    for line in (out or "").splitlines():
-        try:
-            ev = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        content = (ev.get("message") or {}).get("content")
-        for c in content if isinstance(content, list) else []:
-            if c.get("type") == "tool_use":
-                calls[c.get("id")] = {"name": c.get("name", ""), "input": c.get("input") or {}, "ok": False}
-            elif c.get("type") == "tool_result" and c.get("tool_use_id") in calls:
-                calls[c["tool_use_id"]]["ok"] = not c.get("is_error")
-        if ev.get("type") == "result":
-            result = ev
-    if result is not None:
-        result["tool_calls"] = list(calls.values())
-    return result
 
 
 def spec_result(card, data, fresh=True):
@@ -447,7 +356,7 @@ def cmd_commit(a):
         f"- สิ่งที่ยังไม่ได้ทดสอบ: ดู {card.rel}/gate2.md\n", encoding="utf-8")
     msg = (a.message or f"feat({card.key.lower()}): {title}") + \
         f"\n\nArbiter-Card: {card.key}\nArbiter-Tree: {tree}\nArbiter-Gate2: {ap['gate2']['at']}\n"
-    hc.git("add", "-A", cwd=card.root)
+    hc.git("add", "-A", "--", ".", f":(exclude){hc.SPIKES_REL}", cwd=card.root)  # spikes commit themselves
     pending_docs = hc.unstage_docs(card.root, card.docs)  # docs go in their own commit, never the card's
     staged = hc.git("write-tree", cwd=card.root).strip()
     if not hc.same_code(card.root, staged, tree, card.docs):  # assume-unchanged, skip-worktree, force-added...
@@ -503,6 +412,9 @@ def cmd_status(a):
 
 
 def main():
+    if sys.argv[1:2] == ["spike"]:
+        import arbiter_spike
+        return arbiter_spike.main(sys.argv[2:])
     ap = argparse.ArgumentParser(prog="arbiter", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sp = sub.add_parser("spec")

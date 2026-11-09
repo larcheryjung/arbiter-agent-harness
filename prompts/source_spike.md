@@ -1,0 +1,2 @@
+   - การ์ดนี้มาจากแผนที่ผู้ใช้อนุมัติแล้วใน spike: อ่าน `{{SPIKE_DIR}}/solution.md` และการ์ด `{{CARD_ID}}` ใน `{{SPIKE_DIR}}/cards.json` เอง (AC, scope_hint, depends) ใช้เป็นต้นทางคู่กับการ์ดใน Jira
+   - ถ้าเนื้อการ์ด {{KEY}} ใน Jira ต่างจาก `{{CARD_ID}}` ใน cards.json ในเรื่องที่มีผล (AC, ขอบเขต) ให้ถามในส่วน Questions ว่าจะยึดอันไหน

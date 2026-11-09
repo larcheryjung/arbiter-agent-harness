@@ -114,7 +114,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 <div class="wrap">
 <nav class="toc" aria-label="หมวด">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.2.0 · อัปเดต 6 พ.ย. 2026</div>
+  <div class="ver">v0.3.0 · อัปเดต 9 พ.ย. 2026</div>
   <a href="#now">สถานะปัจจุบัน</a>
   <a href="#use">วิธีใช้</a>
   <a href="#how">ทำงานอย่างไร</a>
@@ -131,9 +131,9 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
   <p class="lede">harness ตัวที่ 5 ของคุณก้อง ใช้แทน AeroHarness: Gemini ยังเรียก Claude เองอัตโนมัติเหมือนเดิม แต่การตัดสินว่างานผ่านหรือไม่ ย้ายจาก “AI รายงานเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคนกดอนุมัติแค่ Gate 1 กับ Gate 2</p>
 
   <div class="grid g4" style="margin-top:18px">
-    <div class="card stat"><b>v0.2.0</b><span>commit <code>af02f35</code> · 6 พ.ย.</span></div>
+    <div class="card stat"><b>v0.3.0</b><span>เพิ่ม <code>/spike</code> · 9 พ.ย.</span></div>
     <div class="card stat"><b>1 / 10</b><span>การ์ดจริงในช่วง pilot (KS-118)</span></div>
-    <div class="card stat"><b>32</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
+    <div class="card stat"><b>41</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
     <div class="card stat"><b>$6.24</b><span>ค่า Claude ของ KS-118 ทั้งการ์ด</span></div>
   </div>
 
@@ -144,7 +144,8 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
     <tr><td><code>/feature &lt;โจทย์&gt;</code></td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td>งานที่ไม่มีการ์ด Jira ได้รหัส <code>LOCAL-n</code> ทดสอบกับ Claude จริงใน repo ทดลองแล้ว</td></tr>
     <tr><td>Safety floor: git pre-commit</td><td><span class="pill p-done">ทำงาน</span></td><td>scope, secret, Gate 1/2, ไฟล์ต้องห้าม, เอกสารล้วน commit ได้เอง</td></tr>
     <tr><td>Jira เฉพาะ KS</td><td><span class="pill p-done">ทำงาน</span></td><td>3 ชั้น: credential, <code>--jira-projects-filter KS</code>, <code>~/.claude/hooks/jira-guard.py</code> (ระดับผู้ใช้ ไม่ได้อยู่ใน repo นี้)</td></tr>
-    <tr><td><code>/quick</code>, <code>/spike</code>, Ops</td><td><span class="pill p-todo">ยังไม่ทำ</span></td><td>ดูหมวด Roadmap</td></tr>
+    <tr><td><code>/spike</code></td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td>requirement ใหญ่ → คุยหลายรอบ → อนุมัติแผน → ซอยการ์ด (เครื่องตรวจ) → อนุมัติการ์ด → Gemini สร้างใน KS → <code>link</code> · ไม่มีโค้ด · ทดสอบกับ Claude จริงใน repo ทดลองแล้ว</td></tr>
+    <tr><td><code>/poc</code>, <code>/quick</code>, Ops</td><td><span class="pill p-todo">ยังไม่ทำ</span></td><td>ดูหมวด Roadmap</td></tr>
   </table></div>
 
   <h2>Pilot</h2>
@@ -209,11 +210,12 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 
   <h2>ติดตั้ง / อัปเดตในโปรเจกต์</h2>
 <pre><code>python C:\local-code-repo\arbiter-agent-harness\install.py --project &lt;repo&gt; ^
-  --verify "unit=&lt;คำสั่งเทสต์&gt;" --docs-allow "docs/**" --docs-allow "*.md"
+  --verify "unit=&lt;คำสั่งเทสต์&gt;" --docs-allow "docs/**" --docs-allow "*.md" ^
+  --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"   &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่านได้
 
 # แล้วคน commit เอง
-git add .arbiter/config.json .arbiter/.gitignore .agent/workflows/feature.md
-git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
+git add .arbiter/config.json .arbiter/.gitignore .agent/workflows/
+git commit --no-verify -m "chore: install arbiter 0.3.0"</code></pre>
   <p>รันซ้ำได้ (idempotent): คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ และเขียน workflow ใหม่ ถ้าย้ายโฟลเดอร์ arbiter ต้องรัน install ใหม่ทุกโปรเจกต์ เพราะ hook ชี้ path เต็ม</p>
 </section>
 
@@ -261,7 +263,7 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
   <div class="tbl"><table>
     <tr><th>ชั้น</th><th>คืออะไร</th><th>ตอนนี้</th></tr>
     <tr><td>1. Safety floor</td><td>โค้ดที่ใช้กับทุกงาน ไม่กิน context</td><td>git pre-commit ✅ · jira-guard ✅ · pre-push ❌ · กันเขียน HBS DB/prod ❌</td></tr>
-    <tr><td>2. Track</td><td>ท่าทำงานตามขนาดงาน</td><td><code>/feature</code> ✅ · <code>/quick</code> <code>/spike</code> Ops ❌</td></tr>
+    <tr><td>2. Track</td><td>ท่าทำงานตามขนาดงาน</td><td><code>/feature</code> <code>/spike</code> ✅ · <code>/poc</code> <code>/quick</code> Ops ❌</td></tr>
     <tr><td>3. Pack</td><td>ความรู้เฉพาะเรื่อง โหลดเมื่อเกี่ยว</td><td>ยังไม่มี (jira-ks, spring-boot, docker-deploy, windows-ps, pch-network)</td></tr>
   </table></div>
 </section>
@@ -283,7 +285,7 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
     <div class="card lane">
       <h3>ถัดไป (มีตัวกระตุ้น)</h3>
       <ul>
-        <li><b><code>/spike</code></b> commit บน <code>spike/*</code> ได้ ห้าม merge/push เข้า dev/main ผลเป็น note<span class="why">ทำเมื่อ: มีงาน POC จริง (ตอนนี้ hook บล็อก commit ทุก branch)</span></li>
+        <li><b><code>/poc</code></b> การ์ด POC ที่ spike เสนอ: worktree บน <code>spike/*</code> ห้าม merge (pre-push ดัก trailer) ผลเป็น note ให้ spike อ่านต่อ<span class="why">ทำเมื่อ: มีการ์ด POC จริงใบแรก · แบบอยู่ที่ docs/spike-design.md ข้อ 6</span></li>
         <li><b><code>/quick</code></b> งาน ≤2 ไฟล์: spec สั้น → เทสต์ fail ก่อน → แก้ → review · Gate 2 จุดเดียว<span class="why">ทำเมื่อ: /feature หนักเกินกับงานเล็กจริง</span></li>
         <li><b>Ops</b> runbook → dry-run → คนอนุมัติ → post-check → rollback<span class="why">ทำเมื่อ: มีการ์ด deploy หรือ DB จริง</span></li>
       </ul>
@@ -291,7 +293,6 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
     <div class="card lane">
       <h3>ภายหลัง</h3>
       <ul>
-        <li><b>แยกไฟล์ arbiter.py</b><span class="why">531 บรรทัด เกินงบ 300 · ควรทำก่อนเพิ่ม track</span></li>
         <li><b>Packaging</b> <code>pip install -e</code> + shim hook ที่ fail-closed<span class="why">ตอนนี้ย้ายโฟลเดอร์แล้ว hook หายเงียบ</span></li>
         <li><b>ปิด finding 1</b> เก็บหลักฐานใน <code>.git/arbiter/</code>, approve ต้องใช้รหัสที่คนเห็นเท่านั้น</li>
         <li><b>CI ตรวจ trailer <code>Arbiter-Tree</code></b><span class="why">ปิดช่อง <code>--no-verify</code></span></li>
@@ -327,6 +328,7 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
     <tr><td><code>845eee2</code> v0.1.0</td><td>4 พ.ย.</td><td><code>/feature</code> แรก: spec / answer / approve / review / commit / status, pre-commit, 19 เทสต์</td></tr>
     <tr><td><code>3bd7be9</code></td><td>5 พ.ย.</td><td>ต้องอ่าน Jira สำเร็จจริงก่อนรับ spec (Jira MCP ยัง pending ตอนเริ่ม <code>claude -p</code>)</td></tr>
     <tr><td><code>af02f35</code> v0.2.0</td><td>6 พ.ย.</td><td>การ์ด LOCAL, บรรทัด ▶, STALE บอกไฟล์, <code>docs_allow</code>, config จาก HEAD, hook ต้องเห็น Gate 2, ภาษาตามผู้ใช้</td></tr>
+    <tr><td>v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>spike.read_dirs</code>, /feature อ่านแผนของ spike เอง, แยก <code>arbiter_claude.py</code>, 41 เทสต์</td></tr>
   </table></div>
 
   <h2>บทเรียนจาก KS-118 (การ์ดจริงใบแรก)</h2>
@@ -411,6 +413,7 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
     <tr><td><code>verify_timeout_sec</code></td><td>3600</td><td></td></tr>
     <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE</td></tr>
     <tr><td><code>claude.*</code></td><td>opus, high, 1200, require_jira true</td><td><code>spec_model</code>, <code>review_model</code>, <code>effort</code>, <code>timeout_sec</code>, <code>require_jira</code></td></tr>
+    <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code> {ชื่อ: path} ที่การ์ดเลือกได้, <code>read_dirs</code> repo อื่นที่ Claude อ่าน, <code>max_points</code>, <code>max_rounds_resume</code> (เกินแล้วเริ่ม session ใหม่จากไฟล์), <code>budget_usd</code> (เตือน), <code>board_cmd</code></td></tr>
   </table></div>
   <p>env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (เช่น haiku), <code>ARBITER_CLAUDE_CMD</code> (fake Claude ในเทสต์)</p>
 
@@ -428,7 +431,7 @@ git commit --no-verify -m "chore: install arbiter 0.2.0"</code></pre>
   <p>ตรวจย้อนหลังสิ่งที่ Gemini ทำ: <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code></p>
 </section>
 
-<footer>Arbiter Handbook · ข้อมูล ณ 6 พ.ย. 2026 (v0.2.0) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
+<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.0) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
 </main>
 </div>
 <script>

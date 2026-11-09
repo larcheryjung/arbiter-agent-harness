@@ -55,7 +55,8 @@ Claude Code ติดตั้งเป็น extension ใน Antigravity IDE �
 
 | Track | ใช้กับงาน | ขั้นตอน | คนกด |
 |---|---|---|---|
-| `/spike` | POC, ลองของ, หาสาเหตุ bug | ทำเลย บน branch `spike/*` · **ห้าม merge เข้า main** · ผลลัพธ์คือ note | ไม่มี |
+| `/spike` | requirement ใหญ่ → แผน → การ์ด (2026-11-09 เปลี่ยนความหมาย ดู docs/spike-design.md) | คุยหลายรอบ → อนุมัติแผน → ซอยการ์ด (เครื่องตรวจกฎ) → อนุมัติการ์ด → Gemini สร้างใน KS · ไม่มีโค้ด | อนุมัติแผน + อนุมัติการ์ด |
+| `/poc` | ความหมายเดิมของ `/spike`: ลองของเพื่อตอบคำถามเทคนิค (spike เสนอได้ ไม่บังคับ) | บน branch `spike/*` · **ห้าม merge** · ผลลัพธ์คือ note · ยังไม่ทำ | ไม่มี |
 | `/quick` | ฟีเจอร์เล็ก, bug fix, config (≤2 ไฟล์) | spec สั้น → เทสต์ที่ fail ก่อน → แก้ → review | Gate 2 (ดู spec + diff พร้อมกัน) |
 | `/feature` | ฟีเจอร์กลางถึงใหญ่ใน brownfield | ดูข้อ 6 · ถ้างานใหญ่ให้แบ่งเป็นหลาย phase | Gate 1 + Gate 2 |
 | **Ops** | ไม่ใช่ track ให้เลือก แต่ทำงานอัตโนมัติเมื่อแตะระบบจริง (ssh, deploy, DB) | runbook → dry-run → **คนอนุมัติให้ลงมือจริง** → post-check → rollback | เพิ่มอีก 1 จุด |
@@ -150,7 +151,7 @@ arbiter-agent-harness/
 3. ใช้กับการ์ดจริง 10 ใบ จด `LESSONS.md` แต่ยังไม่เพิ่มกฎ
 4. เพิ่มเฉพาะเรื่องที่เจอซ้ำ
 
-**งบขนาด:** กฎที่โหลดทุก turn ≤80 บรรทัด · template ≤1 หน้าจอ · `bin/arbiter` ≤300 บรรทัด
+**งบขนาด:** กฎที่โหลดทุก turn ≤80 บรรทัด · template ≤1 หน้าจอ (ไม่จำกัดขนาดโค้ด: คุณก้องตัดสิน 2026-11-09)
 **ตัวชี้วัด:** เวลาที่คุณใช้ต่อ gate · จำนวนรอบที่ต้องแก้ · ปัญหาที่คุณเจอตอน Gate 2 แต่ AI ไม่เจอ · bug ที่หลุดไปหลัง Done
 **เกณฑ์ยุติ:** ถ้าครบ 10 การ์ดแล้วไม่ดีกว่า AeroHarness ให้นำแค่ `arbiter review` กับ hook กลับไปเสริม AeroHarness แทน
 
@@ -185,6 +186,8 @@ arbiter-agent-harness/
 - ข้อมูลที่ได้เพิ่ม: Antigravity เก็บ transcript ไว้ที่ `~/.gemini/antigravity/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` จึงใช้ตรวจย้อนหลังแบบอัตโนมัติได้ว่า Gemini ส่งข้อความของผู้ใช้ต่อตรงหรือไม่ · มี `~/.gemini/antigravity/bin/agentapi.bat` ซึ่งยังไม่ได้ตรวจ
 - บทเรียน (ข้อ 11 รอบแรก): Antigravity รันคำสั่งผ่าน `powershell -Command` ซึ่ง**ทำให้ exit code ที่ไม่ใช่ 0 กลายเป็น 1 ทั้งหมด** (ทดสอบแล้ว: 3 กลายเป็น 1) Gemini จึงเข้าใจว่าพังและไปเปิด source → **สื่อสารกับ Gemini ด้วยบรรทัด `STATUS:` และให้สถานะที่ไม่ใช่ error เป็น exit 0** ส่วน exit 0/1 ใช้กับ hook และ script
 - บทเรียน: Python บน Windows พิมพ์ภาษาไทยไม่ได้ถ้าไม่ตั้ง `PYTHONIOENCODING=utf-8` หรือ `sys.stdout.reconfigure(encoding="utf-8")`
+
+- [x] (2026-11-09) `claude -p --add-dir <repo อื่น>` อ่านไฟล์นอก repo ได้ ไม่ค้าง · แต่ไม่ใส่ `--add-dir` ก็อ่านได้เหมือนกัน (Read ที่อยู่ใน `--allowedTools` อ่านได้ทั้งเครื่อง) ดู LESSONS
 
 ## 13. คำถามที่ยังค้าง
 

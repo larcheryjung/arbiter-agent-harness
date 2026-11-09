@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 BLOCK_RE = re.compile(r"```arbiter[ \t]*\r?\n(.*?)```", re.S)
 KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
@@ -15,6 +15,7 @@ LOCAL_RE = re.compile(r"LOCAL-(\d+)")  # work with no Jira card; the brief is th
 ARBITER_DIR = ".arbiter/"
 CONFIG_REL = ".arbiter/config.json"
 AGENT_RULE_FILES = re.compile(r"(^|/)(AGENTS|CLAUDE|GEMINI)\.md$", re.I)  # agents' own rules: never "just docs"
+SPIKES_REL = ".arbiter/spikes"  # /spike: plans and card lists, no code; committed by `arbiter spike link`
 CODE_ONLY = (".", ":(exclude).arbiter")  # pathspec: everything except arbiter artifacts
 COMMIT_ENV = "ARBITER_COMMIT_TREE"  # set only by `arbiter commit`; the hook re-checks the index against it
 
@@ -52,6 +53,16 @@ def card_dir(root, key):
     if not KEY_RE.fullmatch(key or ""):
         raise RuntimeError(f"รหัสการ์ดไม่ถูกต้อง: {key!r}")
     return hdir(root) / "tasks" / key
+
+
+def spike_origin(root, key):
+    """(spike folder relative to root, card id) if `key` was created from an approved spike in this repo."""
+    base = Path(root) / SPIKES_REL
+    for m in sorted(base.glob("*/jira-map.json")) if base.exists() else []:
+        for cid, k in read_json(m, {}).items():
+            if k == key:
+                return m.parent.relative_to(root).as_posix(), cid
+    return None
 
 
 def committed_config(root):

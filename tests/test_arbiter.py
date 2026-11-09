@@ -37,7 +37,7 @@ def review_resp(verdict, findings="ไม่มี"):
     return {"result": f"===VERDICT===\n{verdict}\n===FINDINGS===\n{findings}\n===UNTESTED===\n-\n===LOOK_AT===\n-\n===END==="}
 
 
-class ArbiterTest(unittest.TestCase):
+class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self.tmp.name) / "repo"
@@ -56,7 +56,7 @@ class ArbiterTest(unittest.TestCase):
                             "--verify", f"unit={Path(sys.executable).as_posix()} check.py"],
                            capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.git("add", ".arbiter", ".agent/workflows/feature.md")
+        self.git("add", ".arbiter", ".agent/workflows")
         self.git("commit", "-q", "--no-verify", "-m", "chore: install arbiter")  # the one-time human step
         self.queue([])
 
@@ -110,6 +110,8 @@ class ArbiterTest(unittest.TestCase):
         self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")
         self.assertEqual(self.h("approve", "KS-1", "อนุมัติ")[0], "APPROVED_GATE1")
 
+
+class ArbiterTest(Base):
     # ---------- flows ----------
     def test_happy_path_with_questions_resume_and_commit(self):
         self.queue([spec_resp("1. สีอะไร? [default: แดง]"), spec_resp()])
