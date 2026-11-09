@@ -114,7 +114,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 <div class="wrap">
 <nav class="toc" aria-label="หมวด">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.0 · อัปเดต 9 พ.ย. 2026</div>
+  <div class="ver">v0.3.1 · อัปเดต 9 พ.ย. 2026</div>
   <a href="#now">สถานะปัจจุบัน</a>
   <a href="#use">วิธีใช้</a>
   <a href="#how">ทำงานอย่างไร</a>
@@ -131,9 +131,9 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
   <p class="lede">harness ตัวที่ 5 ของคุณก้อง ใช้แทน AeroHarness: Gemini ยังเรียก Claude เองอัตโนมัติเหมือนเดิม แต่การตัดสินว่างานผ่านหรือไม่ ย้ายจาก “AI รายงานเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคนกดอนุมัติแค่ Gate 1 กับ Gate 2</p>
 
   <div class="grid g4" style="margin-top:18px">
-    <div class="card stat"><b>v0.3.0</b><span>เพิ่ม <code>/spike</code> · 9 พ.ย.</span></div>
+    <div class="card stat"><b>v0.3.1</b><span>เพิ่ม <code>/spike</code> · 9 พ.ย.</span></div>
     <div class="card stat"><b>1 / 10</b><span>การ์ดจริงในช่วง pilot (KS-118)</span></div>
-    <div class="card stat"><b>41</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
+    <div class="card stat"><b>42</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
     <div class="card stat"><b>$6.24</b><span>ค่า Claude ของ KS-118 ทั้งการ์ด</span></div>
   </div>
 
@@ -215,7 +215,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 
 # แล้วคน commit เอง
 git add .arbiter/config.json .arbiter/.gitignore .agent/workflows/
-git commit --no-verify -m "chore: install arbiter 0.3.0"</code></pre>
+git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
   <p>รันซ้ำได้ (idempotent): คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ และเขียน workflow ใหม่ ถ้าย้ายโฟลเดอร์ arbiter ต้องรัน install ใหม่ทุกโปรเจกต์ เพราะ hook ชี้ path เต็ม</p>
 </section>
 
@@ -329,6 +329,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.0"</code></pre>
     <tr><td><code>3bd7be9</code></td><td>5 พ.ย.</td><td>ต้องอ่าน Jira สำเร็จจริงก่อนรับ spec (Jira MCP ยัง pending ตอนเริ่ม <code>claude -p</code>)</td></tr>
     <tr><td><code>af02f35</code> v0.2.0</td><td>6 พ.ย.</td><td>การ์ด LOCAL, บรรทัด ▶, STALE บอกไฟล์, <code>docs_allow</code>, config จาก HEAD, hook ต้องเห็น Gate 2, ภาษาตามผู้ใช้</td></tr>
     <tr><td>v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>spike.read_dirs</code>, /feature อ่านแผนของ spike เอง, แยก <code>arbiter_claude.py</code>, 41 เทสต์</td></tr>
+    <tr><td>v0.3.1</td><td>9 พ.ย.</td><td>spike: Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน) หน้าการ์ดแจ้งเมื่อไม่มี Story</td></tr>
   </table></div>
 
   <h2>บทเรียนจาก KS-118 (การ์ดจริงใบแรก)</h2>
@@ -431,7 +432,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.0"</code></pre>
   <p>ตรวจย้อนหลังสิ่งที่ Gemini ทำ: <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code></p>
 </section>
 
-<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.0) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
+<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.1) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
 </main>
 </div>
 <script>

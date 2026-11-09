@@ -7,7 +7,7 @@ Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แ
 
 ## สถานะ (2026-11-09)
 
-- **v0.3.0** · เทสต์ 41 ข้อ: `python -m unittest discover -s tests`
+- **v0.3.1** · เทสต์ 42 ข้อ: `python -m unittest discover -s tests`
 - Pilot `/feature`: `C:\local-code-repo\hbs3\epolicy` (branch `dev`) ติดตั้ง v0.2.0 แล้ว · การ์ดจริง 1/10 (KS-118 → `e3a4e5a`, ค่า Claude $6.24)
 - Pilot `/spike`: `C:\local-code-repo\hbs3\hbs-strangler-service` (ยังไม่ได้ติดตั้ง) โจทย์: ทีม TA ดูว่าข้อมูลขายเข้า HBS แล้วหรือยัง สถานะอะไร · อ่าน `hbs-legacy/hbs-web-core`
 - มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น

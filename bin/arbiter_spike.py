@@ -126,16 +126,15 @@ def validate(sp, raw):
     if not isinstance(cards, list) or not cards or not all(isinstance(c, dict) for c in cards):
         return None, ["ต้องมี cards เป็นรายการ object อย่างน้อย 1 ใบ"], []
     errors, warns, kp = [], [], sp.cfg.get("key_pattern", r"KS-\d+")
-    epic = d.get("epic")
+    epic, release = d.get("epic"), d.get("release")  # both optional: Claude recommends, the human decides
     if isinstance(epic, str):
         if not re.fullmatch(kp, epic):
             errors.append(f"epic {epic!r} ไม่ใช่รหัสการ์ดตาม key_pattern")
-    elif not (isinstance(epic, dict) and str(epic.get("title", "")).strip()):
-        errors.append('epic ต้องเป็นรหัสการ์ดเดิม หรือ {"title", "goal"}')
-    release = str(d.get("release", "")).strip()
-    if not release:
-        errors.append("ไม่มี release")
-    elif re.search(r"v?\d+\.\d+(\.\d+)?$", release):
+    elif epic is not None and not (isinstance(epic, dict) and str(epic.get("title", "")).strip()):
+        errors.append('epic ต้องเป็นรหัสการ์ดเดิม, {"title", "goal"} หรือ null')
+    if release is not None and not (isinstance(release, str) and release.strip()):
+        errors.append("release ต้องเป็นชื่อ หรือ null")
+    elif release and re.search(r"v?\d+\.\d+(\.\d+)?$", release):
         warns.append(f"release `{release}` ดูเหมือนเลขเวอร์ชันของ service (กฎ: ตั้งชื่อตามฟีเจอร์)")
     ids = [str(c.get("id")) for c in cards]
     errors += [f"id ซ้ำ: {i}" for i in sorted({i for i in ids if ids.count(i) > 1})]
@@ -168,8 +167,6 @@ def validate(sp, raw):
                 break
             if not str(h).startswith("new:") and not path_exists(files, str(h)):
                 errors.append(f"{cid}: scope_hint `{h}` ไม่พบใน {repo} (ของใหม่ให้ขึ้นต้นด้วย new:)")
-    if not any(c.get("type") == "Story" for c in cards):
-        errors.append("ต้องมี Story อย่างน้อย 1 ใบ (ให้ BA/QA ตรวจรับบน UAT)")
     if not errors and has_cycle({str(c["id"]): [str(x) for x in c.get("depends") or []] for c in cards}):
         errors.append("depends วนเป็นวง")
     return d, errors, warns
@@ -191,15 +188,19 @@ def has_cycle(graph):
 
 
 def render_cards(sp, d):
-    cards, epic = d["cards"], d["epic"]
+    cards, epic, release = d["cards"], d.get("epic"), d.get("release")
     epic_line = (f"Epic: {epic} (เดิม)" if isinstance(epic, str) else
-                 f"Epic: **E** · {epic['title']} (ใหม่) · {epic.get('goal', '')}")
+                 f"Epic: **E** · {epic['title']} (ใหม่) · {epic.get('goal', '')}" if epic else "Epic: - (ไม่ผูก epic)")
+    stories = sum(c["type"] == "Story" for c in cards)
     rows = "\n".join(f"| {c['id']} | {c['type']} | {c['title']} | {c['points']} | {c['model']} · {c['effort']} | "
                      f"{c['repo']} | {', '.join(map(str, c.get('depends') or [])) or '-'} |" for c in cards)
     out = [f"# การ์ดของ {sp.key}: {sp.title()}", "",
-           epic_line, f"Release: {d['release']}",
-           f"รวม {len(cards)} ใบ · Story {sum(c['type'] == 'Story' for c in cards)} · "
-           f"Task {sum(c['type'] == 'Task' for c in cards)} · แต้มรวม {sum(c['points'] for c in cards)}", "",
+           epic_line, f"Release: {release or '- (ไม่ใส่ fix version)'}",
+           f"รวม {len(cards)} ใบ · Story {stories} · Task {len(cards) - stories} · "
+           f"แต้มรวม {sum(c['points'] for c in cards)}"]
+    if not stories:
+        out.append("ไม่มี Story: ไม่มีการ์ดใดเข้า UAT / QA ให้ BA ตรวจ ทุกใบไป Done หลัง Gate 2")
+    out += ["",
            "| id | ประเภท | ชื่อ | แต้ม | AI (spec/review) | repo | ต้องเสร็จก่อน |", "|---|---|---|---|---|---|---|",
            rows]
     for c in cards:
@@ -297,8 +298,10 @@ def present(sp, reply="", warns=()):
                f"สร้างการ์ดใน Jira project KS เท่านั้น ตาม {sp.rel}/cards.md ทีละใบตามลำดับในตาราง "
                + ("เริ่มจาก Epic E (ชื่อและ goal ตามไฟล์) " if new_epic else "")
                + "แต่ละหัวข้อ `## Cn` คือการ์ด 1 ใบ: ใช้ชื่อ ประเภท แต้ม (Story Points) ตามไฟล์ และใช้เนื้อหาใต้หัวข้อนั้น"
-                 "เป็น description ตามตัวอักษร ห้ามแก้หรือสรุป ผูกทุกใบกับ epic ใส่ fix version ตาม Release "
-                 f"(สร้างถ้ายังไม่มี) สร้าง subtask ตามขั้นตอนย่อย (ไม่ใส่แต้ม) {board} "
+                 "เป็น description ตามตัวอักษร ห้ามแก้หรือสรุป "
+               + ("ผูกทุกใบกับ epic " if cards.get("epic") else "ไม่ต้องผูก epic ")
+               + ("ใส่ fix version ตาม Release (สร้างถ้ายังไม่มี) " if cards.get("release") else "ไม่ต้องใส่ fix version ")
+               + f"สร้าง subtask ตามขั้นตอนย่อย (ไม่ใส่แต้ม) {board} "
                  f'เสร็จแล้วรัน {SELF} link {sp.key} "{" ".join(f"{i}=KS-?" for i in ids)}" (ใส่รหัสจริงครบทุกตัว)',
                user=f"ไม่ต้องทำอะไร Gemini จะสร้างการ์ด {len(ids)} ใบใน Jira ให้")
     elif sp.plan_ok() and sp.p("cards.json").exists():

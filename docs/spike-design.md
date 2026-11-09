@@ -53,7 +53,7 @@ arbiter ─► commit โฟลเดอร์ spike (ไม่มีโค้�
 ## 4. กฎที่เครื่องตรวจ `cards.json` (ไม่เชื่อ AI)
 
 1. ฟิลด์ครบ: `id, type(Epic/Story/Task), title, parent, points(1,2,3,5,8), model(haiku/sonnet/opus), effort, repo, depends, scope_hint, ac`
-2. Story ทุกใบมี AC แบบ Given/When/Then · ทุก Epic มี Story อย่างน้อย 1 ใบ (AGENTS กฎ 9)
+2. ทุกการ์ดมี AC · Story / Epic / Release **ไม่บังคับ** (v0.3.1) Claude เสนอตามเนื้องาน หน้าการ์ดแจ้งเมื่อไม่มี Story
 3. การ์ดที่ไม่ใช่ Epic มีแต้มไม่เกิน `max_points` (ค่าตั้งต้น 8) ถ้าเกินต้องแตกเพิ่ม
 4. Story/Task มี `repo` เดียวจาก `spike.repos` เพราะ /feature ทำงานใน repo เดียว
 5. `depends` ชี้ไปที่ id ที่มีอยู่จริงและไม่วนเป็นวง

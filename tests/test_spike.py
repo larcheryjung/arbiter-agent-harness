@@ -84,7 +84,7 @@ class SpikeTest(Base):
         self.h("spike", "new", "--text", "x")
         st, out = self.h("spike", "approve", "SPIKE-1", "อนุมัติแผน")
         self.assertEqual(st, "ERROR", out)
-        for msg in ("แต้ม 13", "Story อย่างน้อย 1 ใบ", "`nope/**` ไม่พบ", "C9 ซึ่งไม่มีอยู่"):
+        for msg in ("แต้ม 13", "`nope/**` ไม่พบ", "C9 ซึ่งไม่มีอยู่"):
             self.assertIn(msg, out)
         fix = self.calls()[-1]
         self.assertIn("--resume", fix["args"])
@@ -98,6 +98,22 @@ class SpikeTest(Base):
         st, out = self.h("spike", "approve", "SPIKE-1", "อนุมัติแผน")
         self.assertEqual(st, "READY_FOR_CARDS_APPROVAL", out)
         self.assertIn("ดูเหมือนเลขเวอร์ชันของ service", out)
+
+    def test_task_only_without_epic_or_release_is_accepted(self):
+        d = {"epic": None, "release": None, "cards": [card("C1", type="Task"), card("C2", type="Task")]}
+        resp = {"result": f"===REPLY===\nNONE\n===CARDS===\n{json.dumps(d, ensure_ascii=False)}\n===END==="}
+        self.queue([plan_resp(), resp])
+        self.h("spike", "new", "--text", "ออกแบบ architecture")
+        st, out = self.h("spike", "approve", "SPIKE-1", "อนุมัติแผน")
+        self.assertEqual(st, "READY_FOR_CARDS_APPROVAL", out)
+        self.assertIn("Epic: - (ไม่ผูก epic)", out)
+        self.assertIn("Release: - (ไม่ใส่ fix version)", out)
+        self.assertIn("ไม่มี Story: ไม่มีการ์ดใดเข้า UAT / QA", out)
+        self.assertEqual(len(self.calls()), 2)  # accepted first time, no fix round
+        st, out = self.h("spike", "approve", "SPIKE-1", "อนุมัติการ์ด")
+        self.assertEqual(st, "APPROVED_CARDS", out)
+        self.assertIn("ไม่ต้องผูก epic ไม่ต้องใส่ fix version", out)
+        self.assertIn('link SPIKE-1 "C1=KS-? C2=KS-?"', out)
 
     def test_plan_change_voids_card_list_and_approvals(self):
         self.to_cards()
