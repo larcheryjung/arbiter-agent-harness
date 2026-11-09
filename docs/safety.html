@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>อะไรบังคับจริง · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 5 · เข้าใจลึก</div>
+<h1>อะไรบังคับจริง อะไรเป็นแค่กติกา</h1>
+<p class="lede">กติกาทุกข้อของ harness แบ่งได้ 2 แบบ: <b>เครื่องบังคับ</b> (AI ฝ่าไม่ได้ ต่อให้ลืมหรือตั้งใจ) กับ <b>กติกาใน prompt</b> (AI ควรทำตาม แต่ฝ่าได้)
+การรู้ว่าข้อไหนเป็นแบบไหน ช่วยให้รู้ว่าต้องเฝ้าดูตรงไหน</p>
+
+<h2>3 ชั้นของ harness</h2>
+<div class="tbl"><table>
+  <tr><th>ชั้น</th><th>คืออะไร</th><th>ตอนนี้มี</th></tr>
+  <tr><td>1. Safety floor</td><td>โค้ดที่ใช้กับทุกงาน ไม่กิน context ของ AI</td><td>git pre-commit ✅ · jira-guard ✅ · pre-push ❌ · กันเขียน HBS DB / prod ❌</td></tr>
+  <tr><td>2. Track</td><td>ท่าทำงานตามขนาดงาน (workflow ของ Gemini + template ของ Claude)</td><td><code>/feature</code> <code>/spike</code> ✅ · <code>/poc</code> <code>/quick</code> Ops ❌</td></tr>
+  <tr><td>3. Pack</td><td>ความรู้เฉพาะเรื่อง โหลดเมื่อเกี่ยวข้อง</td><td>ยังไม่มี (jira-ks, spring-boot, docker-deploy, windows-ps, pch-network)</td></tr>
+</table></div>
+
+<h2 id="enforced">เครื่องบังคับ</h2>
+<div class="tbl"><table>
+  <tr><th>ที่ไหน</th><th>บังคับอะไร</th></tr>
+  <tr><td><code>arbiter review</code></td><td>ไฟล์ที่เปลี่ยนต้องอยู่ใน scope · verify ต้อง exit 0 · คำสั่ง verify จาก spec ห้ามมี <code>| &amp; ; &lt; &gt; `</code> (กันการซ่อน exit code) · โค้ดห้ามเปลี่ยนระหว่างรัน verify · Claude ต้องตอบตาม marker ไม่งั้น ERROR · spec ต้องตรงกับที่อนุมัติ</td></tr>
+  <tr><td><code>arbiter spec</code></td><td>การ์ด KS ต้องมีหลักฐานจาก stream ว่า Claude เรียก <code>jira_get_issue</code> ของการ์ดนั้นสำเร็จ ไม่งั้นไม่รับ spec</td></tr>
+  <tr><td><code>arbiter commit</code></td><td>evidence ผ่านทั้ง gate และ review · spec sha ตรง Gate 1 · ไม่มี drift · ไม่มีไฟล์นอก scope · สิ่งที่ stage ตรงกับที่รีวิวทุกไบต์ · การ์ดไม่ถูกพัก</td></tr>
+  <tr><td>git pre-commit (fail-closed)</td><td>โค้ด commit ได้เฉพาะผ่าน <code>arbiter commit</code> ที่มี Gate 2 ของ tree นั้น · scope ของการ์ด ACTIVE · ความลับ (private key, AWS access key, Atlassian token, GitHub token) · ไฟล์ <code>.env</code> / คีย์ SSH · ห้าม commit <code>config.json</code> · เอกสารล้วนผ่านได้ · hook พังเอง = บล็อก</td></tr>
+  <tr><td>config</td><td>arbiter ใช้ <code>config.json</code> ฉบับที่ commit แล้วเท่านั้น ถ้าไฟล์ในเครื่องต่างไป arbiter หยุด (กัน AI แอบขยาย <code>docs_allow</code> หรือลบ verify) · hook อ่าน <code>docs_allow</code> จาก HEAD</td></tr>
+  <tr><td><code>claude -p</code></td><td>มีแค่ Read / Grep / Glob · ปฏิเสธ Edit / Write / Bash / PowerShell · Jira อ่านอย่างเดียว · การ์ด LOCAL ไม่มีเครื่องมือ Jira</td></tr>
+  <tr><td>Jira</td><td>KS เท่านั้น 3 ชั้น: credential เห็นแค่ KS · mcp-atlassian <code>--jira-projects-filter KS</code> · hook ระดับผู้ใช้ <code>~/.claude/hooks/jira-guard.py</code> · <code>arbiter_board.py</code> ส่งได้เฉพาะรหัส <code>KS-n</code> (เขียนไว้ในโค้ด ไม่ได้อ่านจาก config)</td></tr>
+  <tr><td>dispute</td><td>คำสั่งพิสูจน์ห้ามมี shell meta · 1–3 คำสั่ง · ไม่เกิน 2 ครั้งต่อการ์ด</td></tr>
+</table></div>
+
+<h2 id="prompt-only">กติกาใน prompt (เฝ้าดูได้ แต่ยังบังคับไม่ได้)</h2>
+<div class="tbl"><table>
+  <tr><th>กติกา</th><th>เคยถูกฝ่า</th></tr>
+  <tr><td>Gemini แสดงข้อความของ arbiter ตามตัวอักษร ห้ามสรุปหรือแนะนำคำตอบ</td><td>KS-118 (แต่งเหตุผลเอง) · KS-160 (สรุป spec เองแทนการแสดง)</td></tr>
+  <tr><td>ห้าม <code>git checkout / restore / reset / stash / clean</code></td><td>KS-118 (เกือบทับรายงาน) · KS-160 ใช้ <code>git checkout &lt;tree&gt; -- file</code> 2 ครั้ง</td></tr>
+  <tr><td>ห้ามหาทางเลี่ยงเครื่องตรวจ ให้ใช้ dispute</td><td>KS-160 เปลี่ยนเป็น <code>externalValue</code> จน lint ไม่ตรวจ payload</td></tr>
+  <tr><td>ห้ามแต่งข้อมูลที่ไม่มีที่มา ใช้ TODO / placeholder</td><td>KS-160 แต่ง license MIT, "Travel Accident", hostname ที่ดูเหมือนจริง</td></tr>
+  <tr><td>ห้ามอ่านซอร์สของ arbiter และห้ามแก้ <code>.arbiter/</code></td><td>KS-118 อ่าน arbiter.py หา env ที่ hook เชื่อ</td></tr>
+  <tr><td>ห้ามห่อคำสั่ง arbiter ด้วย <code>python -c</code></td><td>KS-160 ห่อแล้วข้อความไทยพัง ผลหาย</td></tr>
+  <tr><td>HBS Oracle อ่านอย่างเดียว (SELECT)</td><td>ยังไม่เคยถูกฝ่า · ใช้ user readonly เป็นชั้นป้องกันหลัก</td></tr>
+</table></div>
+<div class="callout"><span class="t">วิธีอ่านตารางนี้</span>
+ทุกครั้งที่กติกาใน prompt ถูกฝ่าซ้ำ ให้ถามว่า "ย้ายไปไว้ในเครื่องได้ไหม" (หลักแกนข้อ 7) เช่นเรื่อง board ที่ Gemini ลืม ถูกย้ายมาให้ arbiter ทำเองใน v0.3.2
+ส่วน <code>git checkout</code> ยังย้ายไม่ได้ เพราะ git ไม่มี hook ที่ใช้บล็อกคำสั่งนี้</div>
+
+<h2 id="gaps">ช่องโหว่ที่รู้แล้ว</h2>
+<ul>
+  <li><b>ไฟล์ใน <code>.arbiter/</code> (approvals, evidence, state) agent ยังเขียนได้</b> การข้าม Gate 2 ต้องปลอมการอนุมัติของคน ซึ่งเห็นได้ใน transcript แต่ยังไม่ถูกบล็อก (แผน: ย้ายหลักฐานไป <code>.git/arbiter/</code>)</li>
+  <li><b>agent รัน <code>approve</code> หรือ <code>--continue</code> แทนคนได้</b> ตรวจย้อนหลังได้จาก transcript เท่านั้น</li>
+  <li><b><code>git commit --no-verify</code> ข้าม hook ได้</b> ตั้งใจให้คนใช้สำหรับ config (แผน: CI ตรวจ trailer <code>Arbiter-Tree</code>)</li>
+  <li><b>ย้ายโฟลเดอร์ arbiter แล้ว hook หายเงียบ</b> เพราะ <code>core.hooksPath</code> ชี้ path เต็ม ต้องรัน install ใหม่ทุกโปรเจกต์</li>
+  <li><b>ความลับใน transcript</b> ใน SPIKE-1 Gemini เปิดไฟล์ <code>.secret</code> ทั้งไฟล์ และใส่รหัสผ่าน DB ลงในคำสั่งตรงๆ ซึ่งค้างอยู่ใน transcript ควรมีสคริปต์ต่อ DB ที่อ่านรหัสจาก env</li>
+  <li><b>Claude ใน <code>claude -p</code> อ่านไฟล์นอก repo ได้</b> (Read ไม่จำกัด path) ถ้าจะจำกัดจริงต้องใช้ permission rule แบบ deny</li>
+  <li><b>haiku ตัดสิน review ไม่สม่ำเสมอ</b> ใช้ได้แค่ smoke test</li>
+</ul>
+
+<h2>ลองตอบ</h2>
+<details class="q"><summary>ถ้า Gemini พยายาม <code>git commit</code> โค้ดเอง จะเกิดอะไร</summary>
+pre-commit hook บล็อก เพราะโค้ด commit ได้เฉพาะผ่าน <code>arbiter commit</code> ที่มี Gate 2 ของ tree นั้น เว้นแต่ใช้ <code>--no-verify</code> ซึ่งเห็นได้ใน transcript</details>
+<details class="q"><summary>Gemini แก้ <code>config.json</code> เพื่อเพิ่ม <code>docs_allow</code> ให้ตัวเอง จะได้ผลไหม</summary>
+ไม่ได้ arbiter ใช้ config ฉบับที่ commit แล้วเท่านั้น และจะหยุดทำงานทันทีที่เห็นว่าไฟล์ในเครื่องต่างไป hook ก็ไม่ให้ commit config.json</details>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 5</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

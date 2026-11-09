@@ -7,463 +7,94 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #f7f6f2; --surface: #ffffff; --surface-2: #f0eee8; --text: #1d1d1b; --muted: #5f5d57;
-  --line: #dedbd2; --accent: #2f5d50; --accent-soft: #e3eee9;
-  --human: #8a4b14; --human-soft: #f6e8da; --gemini: #1f4e8c; --gemini-soft: #e2ebf7;
-  --claude: #9a3b26; --claude-soft: #f7e3dc; --machine: #2f5d50; --machine-soft: #e3eee9;
-  --ok: #2e6b3a; --warn: #8a6100; --bad: #a12f2f;
-  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #161614; --surface: #1f1f1c; --surface-2: #2a2a26; --text: #ecebe6; --muted: #a9a79f;
-    --line: #3a3934; --accent: #8cc4b0; --accent-soft: #23352f;
-    --human: #e3a76f; --human-soft: #3a2a1b; --gemini: #8db4ea; --gemini-soft: #1d2a3d;
-    --claude: #eb9a83; --claude-soft: #3b231d; --machine: #8cc4b0; --machine-soft: #23352f;
-    --ok: #8fd19e; --warn: #e5c06a; --bad: #f09a9a;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #161614; --surface: #1f1f1c; --surface-2: #2a2a26; --text: #ecebe6; --muted: #a9a79f;
-  --line: #3a3934; --accent: #8cc4b0; --accent-soft: #23352f;
-  --human: #e3a76f; --human-soft: #3a2a1b; --gemini: #8db4ea; --gemini-soft: #1d2a3d;
-  --claude: #eb9a83; --claude-soft: #3b231d; --machine: #8cc4b0; --machine-soft: #23352f;
-  --ok: #8fd19e; --warn: #e5c06a; --bad: #f09a9a;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 "IBM Plex Sans Thai", system-ui, sans-serif; }
-code, pre { font-family: var(--mono); font-size: .9em; }
-code { background: var(--surface-2); padding: .05em .35em; border-radius: 4px; overflow-wrap: anywhere; }
-pre { background: var(--surface-2); padding: 14px 16px; border-radius: 8px; overflow-x: auto; line-height: 1.55; margin: 12px 0; }
-pre code { background: none; padding: 0; }
-a { color: var(--accent); }
-.wrap { max-width: 1140px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 40px; }
-nav.toc { position: sticky; top: 0; align-self: start; padding-top: 40px; font-size: 15px; }
-nav.toc .brand { font-weight: 700; font-size: 18px; margin-bottom: 2px; }
-nav.toc .ver { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
-nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 6px 0 6px 12px; border-left: 2px solid var(--line); }
-nav.toc a:hover { color: var(--text); }
-nav.toc a.on { color: var(--text); border-left-color: var(--accent); font-weight: 600; }
-main { padding: 40px 0 80px; min-width: 0; }
-.js section.page { display: none; }
-.js section.page.on { display: block; }
-section.page { padding-bottom: 32px; }
-.eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-h1 { font-size: 32px; line-height: 1.25; margin: 4px 0 10px; }
-.lede { font-size: 18px; color: var(--muted); margin: 0 0 8px; max-width: 64ch; }
-h2 { font-size: 21px; margin: 32px 0 10px; }
-h3 { font-size: 17px; margin: 22px 0 8px; }
-p { margin: 8px 0; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
-.grid { display: grid; gap: 12px; }
-.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.stat b { display: block; font-size: 26px; line-height: 1.2; }
-.stat span { color: var(--muted); font-size: 14px; }
-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 15px; }
-th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { background: var(--surface-2); font-weight: 600; font-size: 14px; }
-tr:last-child td { border-bottom: none; }
-.tbl { overflow-x: auto; margin: 10px 0; }
-.role { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
-.r-human { background: var(--human-soft); color: var(--human); }
-.r-gemini { background: var(--gemini-soft); color: var(--gemini); }
-.r-claude { background: var(--claude-soft); color: var(--claude); }
-.r-machine { background: var(--machine-soft); color: var(--machine); }
-.flow { list-style: none; padding: 0; margin: 12px 0; position: relative; }
-.flow::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
-.flow > li { position: relative; padding: 0 0 16px 46px; }
-.flow > li::before { content: ""; position: absolute; left: 9px; top: 7px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); }
-.flow > li.gate::before { border-color: var(--human); background: var(--human); }
-.flow .step { font-weight: 600; }
-.flow .detail { color: var(--muted); font-size: 15px; }
-.st { font-family: var(--mono); font-size: 12.5px; font-weight: 500; padding: 1px 7px; border-radius: 5px; background: var(--surface-2); white-space: nowrap; }
-.st.ok { color: var(--ok); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); }
-.pill { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
-.p-done { background: var(--machine-soft); color: var(--ok); }
-.p-part { background: var(--human-soft); color: var(--warn); }
-.p-todo { background: var(--surface-2); color: var(--muted); }
-.p-no { background: var(--claude-soft); color: var(--bad); }
-.callout { border-left: 4px solid var(--warn); background: var(--surface); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
-.callout.good { border-left-color: var(--ok); }
-.lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.lane h3 { margin: 0 0 8px; }
-.lane ul { margin: 0; padding-left: 18px; }
-.lane li { margin: 6px 0; }
-.lane .why { color: var(--muted); font-size: 14px; display: block; }
-.say { background: var(--human-soft); color: var(--text); border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-family: var(--mono); font-size: 14px; }
-.theme-btn { position: fixed; top: 14px; right: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; z-index: 2; }
-footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); margin-top: 40px; padding-top: 14px; }
-@media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  nav.toc { position: static; padding-top: 52px; display: flex; flex-wrap: wrap; gap: 6px; }
-  nav.toc .brand, nav.toc .ver { width: 100%; margin: 0; }
-  nav.toc a { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 14px; }
-  nav.toc a.on { border-color: var(--accent); }
-  main { padding-top: 20px; }
-  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .g2, .lanes { grid-template-columns: minmax(0, 1fr); }
-  h1 { font-size: 26px; }
-}
-</style>
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
 <div class="wrap">
-<nav class="toc" aria-label="หมวด">
+<nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.3 · อัปเดต 9 พ.ย. 2026</div>
-  <a href="#now">สถานะปัจจุบัน</a>
-  <a href="#use">วิธีใช้</a>
-  <a href="#how">ทำงานอย่างไร</a>
-  <a href="#roadmap">Roadmap</a>
-  <a href="#lessons">บทเรียนและข้อจำกัด</a>
-  <a href="#ref">อ้างอิง</a>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
 
-<!-- ============================================================ NOW -->
-<section class="page" id="now">
-  <div class="eyebrow">สถานะปัจจุบัน</div>
-  <h1>Arbiter อยู่ตรงไหนแล้ว</h1>
-  <p class="lede">harness ตัวที่ 5 ของคุณก้อง ใช้แทน AeroHarness: Gemini ยังเรียก Claude เองอัตโนมัติเหมือนเดิม แต่การตัดสินว่างานผ่านหรือไม่ ย้ายจาก “AI รายงานเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคนกดอนุมัติแค่ Gate 1 กับ Gate 2</p>
+<div class="eyebrow">เริ่มที่นี่</div>
+<h1>Arbiter คืออะไร และทำไมต้องมี</h1>
+<p class="lede">Arbiter คือ "กรรมการ" ที่ยืนอยู่ระหว่าง AI สองตัว: Gemini เป็นคนลงมือเขียนงาน, Claude เป็นคนร่าง spec และตรวจงาน
+ส่วนการตัดสินว่า <b>งานผ่านหรือไม่ผ่าน</b> ไม่ได้มาจากคำพูดของ AI ตัวไหน แต่มาจาก script ที่รันคำสั่งตรวจจริงและอ่าน exit code
+คุณเป็นคนกดอนุมัติแค่ 2 จุด คือก่อนเริ่มเขียน (Gate 1) และก่อนรวมงาน (Gate 2)</p>
 
-  <div class="grid g4" style="margin-top:18px">
-    <div class="card stat"><b>v0.3.3</b><span>ปลด deadlock: dispute / SPEC_ISSUE / park · 9 พ.ย.</span></div>
-    <div class="card stat"><b>1 / 10</b><span>การ์ดจริงในช่วง pilot (KS-118)</span></div>
-    <div class="card stat"><b>54</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
-    <div class="card stat"><b>$6.24</b><span>ค่า Claude ของ KS-118 ทั้งการ์ด</span></div>
-  </div>
+<div class="callout">
+  <span class="t">ประโยคเดียวที่ต้องจำ</span>
+  AI ทำงานได้เร็วเหมือนเดิม แต่ <b>ห้าม AI ให้คะแนนงานตัวเอง</b> และห้าม AI ที่ถูกตรวจเป็นคนเขียนโจทย์ให้ AI ที่ตรวจ
+</div>
 
-  <h2>มีอะไรใช้ได้แล้ว</h2>
-  <div class="tbl"><table>
-    <tr><th>ส่วน</th><th>สถานะ</th><th>หมายเหตุ</th></tr>
-    <tr><td><code>/feature KS-xx</code></td><td><span class="pill p-done">ใช้จริงแล้ว</span></td><td>การ์ด Jira: spec → ถามตอบ → Gate 1 → เขียนโค้ด → review → Gate 2 → commit → ขยับการ์ด</td></tr>
-    <tr><td><code>/feature &lt;โจทย์&gt;</code></td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td>งานที่ไม่มีการ์ด Jira ได้รหัส <code>LOCAL-n</code> ทดสอบกับ Claude จริงใน repo ทดลองแล้ว</td></tr>
-    <tr><td>Safety floor: git pre-commit</td><td><span class="pill p-done">ทำงาน</span></td><td>scope, secret, Gate 1/2, ไฟล์ต้องห้าม, เอกสารล้วน commit ได้เอง</td></tr>
-    <tr><td>Jira เฉพาะ KS</td><td><span class="pill p-done">ทำงาน</span></td><td>3 ชั้น: credential, <code>--jira-projects-filter KS</code>, <code>~/.claude/hooks/jira-guard.py</code> (ระดับผู้ใช้ ไม่ได้อยู่ใน repo นี้)</td></tr>
-    <tr><td><code>/spike</code></td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td>requirement ใหญ่ → คุยหลายรอบ → อนุมัติแผน → ซอยการ์ด (เครื่องตรวจ) → อนุมัติการ์ด → Gemini สร้างใน KS → <code>link</code> · ไม่มีโค้ด · ทดสอบกับ Claude จริงใน repo ทดลองแล้ว</td></tr>
-    <tr><td>ปลด deadlock</td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td><code>decisions.md</code> ผูก reviewer · <code>SPEC_ISSUE</code> · <code>dispute --claim --prove</code> → UPHOLD / REVISE_SPEC / NEED_HUMAN · <code>park</code> / <code>unpark</code> · ทุกการแก้ spec ต้องผ่าน Gate 1 ใหม่</td></tr>
-    <tr><td><code>/poc</code>, <code>/quick</code>, Ops</td><td><span class="pill p-todo">ยังไม่ทำ</span></td><td>ดูหมวด Roadmap</td></tr>
-  </table></div>
+<h2>ในหนึ่งนาที: มีใครอยู่ในระบบบ้าง</h2>
+<div class="grid g4">
+  <div class="card human"><h3>คุณ</h3><p class="small">คุยกับ Gemini ในแชท Antigravity ช่องเดียว ตอบคำถาม กด <b>Gate 1</b> กับ <b>Gate 2</b> และตัดสินเรื่องที่ AI ตกลงกันไม่ได้</p></div>
+  <div class="card gemini"><h3>Gemini</h3><p class="small">คนคุมงานและ<b>ลงมือเขียน</b> เรียกคำสั่ง <code>arbiter</code> แล้วทำตามบรรทัด <code>NEXT:</code> ส่งคำพูดของคุณต่อตามตัวอักษร</p></div>
+  <div class="card machine"><h3>arbiter (script)</h3><p class="small"><b>กรรมการ</b> สร้าง prompt ให้ Claude จาก template รันเครื่องตรวจ นับรอบ ตัดสินจากหลักฐาน และ commit</p></div>
+  <div class="card claude"><h3>Claude</h3><p class="small"><b>สถาปนิกและผู้ตรวจ</b> ถูกเรียกแบบ <code>claude -p</code> อ่านได้อย่างเดียว ร่าง spec ตรวจ diff และชี้ขาดข้อโต้แย้ง</p></div>
+</div>
 
-  <h2>Pilot</h2>
-  <div class="tbl"><table>
-    <tr><th>repo</th><td><code>C:\local-code-repo\hbs3\epolicy</code> (branch <code>dev</code>) ติดตั้ง v0.2.0 แล้ว (<code>cc59c47</code>)</td></tr>
-    <tr><th>verify</th><td><code>unit</code> = mvn test ไม่รวม integration และ <code>AwsOracle19cVerificationTest</code> · <code>format</code> = <code>mvn -q spotless:check</code></td></tr>
-    <tr><th>Claude</th><td>spec และ review ใช้ opus, effort high, timeout 1200 วินาที</td></tr>
-    <tr><th>docs_allow</th><td><code>kong-workspace/docs/**</code>, <code>*.md</code>, <code>kong-workspace/*.md</code> (ยกเว้น AGENTS/CLAUDE/GEMINI.md เสมอ)</td></tr>
-    <tr><th>การ์ดที่เสร็จ</th><td>KS-118 Concurrency Throttle &amp; Hardware Bulkhead → <code>e3a4e5a</code> · review 4 รอบ (ไม่โดนตีกลับเลย) · Jira ย้ายเป็น Done</td></tr>
-  </table></div>
+<h2>สิ่งที่คุณพิมพ์จริงๆ มีไม่กี่อย่าง</h2>
+<div class="tbl"><table>
+  <tr><th>อยากทำอะไร</th><th>พิมพ์ในแชท Gemini</th><th>อ่านต่อ</th></tr>
+  <tr><td>มี requirement ใหญ่ อยากได้แผนและการ์ด</td><td><code>/spike &lt;เล่าโจทย์ + แนบไฟล์&gt;</code> หรือ <code>/spike KS-xx</code></td><td><a href="spike.html">/spike</a></td></tr>
+  <tr><td>ทำการ์ดหนึ่งใบให้เสร็จ</td><td><code>/feature KS-xx</code></td><td><a href="feature.html">/feature</a></td></tr>
+  <tr><td>งานเล็กที่ไม่มีการ์ด Jira</td><td><code>/feature &lt;เล่าโจทย์&gt;</code> (ได้รหัส <code>LOCAL-n</code>)</td><td><a href="feature.html#local">/feature</a></td></tr>
+  <tr><td>อนุมัติ</td><td><code>อนุมัติ Gate 1</code> · <code>อนุมัติ Gate 2</code> · <code>อนุมัติแผน</code> · <code>อนุมัติการ์ด</code></td><td><a href="concepts.html#gates">Gate</a></td></tr>
+  <tr><td>งานวนไม่จบ</td><td><code>ทำต่อ: &lt;คำตัดสิน&gt;</code> · <code>แก้ spec: …</code> · <code>พักการ์ด</code></td><td><a href="stuck.html">เมื่องานติด</a></td></tr>
+</table></div>
+<p>ทุกหน้าที่รอคุณจะจบด้วยบรรทัด <b>▶ สิ่งที่คุณต้องทำ</b> เสมอ ถ้าไม่เห็นบรรทัดนี้ แปลว่ายังไม่ถึงตาคุณ</p>
 
-  <div class="callout">
-    <b>เกณฑ์ยุติที่ตกลงไว้:</b> ถ้าใช้ครบ 10 การ์ดแล้วไม่ดีกว่า AeroHarness ให้นำแค่ <code>arbiter review</code> กับ hook กลับไปเสริม AeroHarness แทน
-  </div>
-</section>
+<h2>ทำไมถึงต้องมี Arbiter</h2>
+<p>Arbiter เป็น harness ตัวที่ 5 ก่อนหน้านี้มี DUET, Aether Forge, AeroHarness และ Triumvirate ตัวที่ใช้กับงานจริงมีแค่ AeroHarness
+(signature-orchestrator KS-19 ถึง KS-58) ปัญหาที่เจอซ้ำๆ คือ:</p>
+<div class="grid g3">
+  <div class="card"><h3>AI รายงานผลเอง</h3><p class="small">"เทสต์ผ่านแล้ว" เป็นแค่ข้อความ ไม่มีหลักฐาน กฎ "ต้องรันจริงเท่านั้น" อยู่ใน prompt ซึ่ง AI ลืมหรือข้ามได้</p></div>
+  <div class="card"><h3>คนถูกตรวจเขียนโจทย์ให้คนตรวจ</h3><p class="small">Builder เขียน <code>architect-prompt.txt</code> เอง จึงเลือกได้ว่าจะให้ Architect เห็นอะไร การตรวจเลยเอนตามคนทำ</p></div>
+  <div class="card"><h3>กฎอยู่แค่ใน prompt</h3><p class="small">scope, Jira KS เท่านั้น, ห้ามแตะ prod ไม่มีอะไรบังคับจริง และใช้ <code>--dangerously-skip-permissions</code></p></div>
+</div>
+<p>Arbiter แก้ด้วยการย้ายสิ่งที่สำคัญที่สุดออกจาก prompt ไปไว้ในโค้ด: เครื่องรันตรวจเอง เก็บหลักฐานเป็นไฟล์ git hook บล็อกการ commit ที่ไม่ผ่าน
+และ prompt ของ Claude ถูกสร้างจาก template ที่ Gemini แก้ไม่ได้</p>
 
-<!-- ============================================================ USE -->
-<section class="page" id="use">
-  <div class="eyebrow">วิธีใช้</div>
-  <h1>ใช้งานประจำวัน</h1>
-  <p class="lede">คุณคุยกับ Gemini ในช่องแชทของ Antigravity อย่างเดียว ไม่ต้องสลับ panel ไม่ต้องจำคำสั่ง ทุกหน้าที่รอคุณจะจบด้วยบรรทัด <b>▶ สิ่งที่คุณต้องทำ</b></p>
+<h2>หลักแกน 7 ข้อ</h2>
+<ol>
+  <li><b>เครื่องเป็นคนตัดสิน ไม่ใช่ AI เล่า</b> ผลมาจาก <code>evidence.json</code> และ exit code</li>
+  <li><b>คนกดแค่ Gate 1 และ Gate 2</b> ช่วงระหว่างนั้นทำงานอัตโนมัติ ไม่ต้องสลับ panel</li>
+  <li><b>คนถูกตรวจห้ามเขียนโจทย์ให้คนตรวจ</b> Gemini ส่งแค่ตัวชี้ (รหัสการ์ด) และคำพูดของคุณตามตัวอักษร</li>
+  <li><b>พื้นกันพังอยู่ใน git hook และ gate script</b> ชั้นเดียวที่บังคับได้ทั้ง Gemini และ Claude</li>
+  <li><b>harness ตัวเดียว แยกท่าตามงาน</b> <code>/spike</code> สำหรับงานใหญ่ <code>/feature</code> สำหรับการ์ดหนึ่งใบ</li>
+  <li><b>ส่งต่องานผ่านไฟล์ และเริ่ม context ใหม่ทุกการ์ด</b> ไฟล์สั้นและชี้ไปที่ต้นทาง ไม่คัดลอกเนื้อหา</li>
+  <li><b>บทเรียนต้องย้อนกลับมาแก้ harness</b> สะดุดเมื่อไรจด <code>LESSONS.md</code> เจอซ้ำค่อยเพิ่มตัวตรวจ</li>
+</ol>
+<p class="muted small">อ่านคำอธิบายแต่ละข้อพร้อมตัวอย่างได้ที่ <a href="concepts.html">แนวคิดและบทบาท</a></p>
 
-  <h2>เริ่มงาน</h2>
-  <div class="tbl"><table>
-    <tr><th>งาน</th><th>พิมพ์</th><th>ผล</th></tr>
-    <tr><td>การ์ด Jira</td><td><code>/feature KS-123</code></td><td>Claude อ่านการ์ดจาก Jira เอง (ถ้าอ่านไม่ได้จะหยุด ไม่เดา)</td></tr>
-    <tr><td>งานในเครื่อง ไม่มีการ์ด</td><td><code>/feature เพิ่ม endpoint ตรวจสถานะคิว</code></td><td>ได้รหัส <code>LOCAL-1</code>, <code>LOCAL-2</code>, … โจทย์คือข้อความของคุณตามตัวอักษร</td></tr>
-    <tr><td>ทำการ์ดเดิมต่อ</td><td><code>/feature KS-123</code> หรือ <code>/feature LOCAL-1</code></td><td>Gemini ดูสถานะแล้วทำต่อจากขั้นที่ค้าง</td></tr>
-  </table></div>
-  <p>เปิดแชท Gemini ใหม่ทุกครั้งที่อัปเดต arbiter เพื่อให้โหลด workflow ฉบับล่าสุด</p>
+<h2>เส้นทางการเรียน</h2>
+<div class="grid g2">
+  <a class="card link" href="concepts.html"><h3>1. แนวคิดและบทบาท</h3><p class="small">ใครทำอะไร STATUS / NEXT / ▶ คืออะไร Gate ต้องดูอะไร scope และหลักฐานทำงานอย่างไร</p><span class="go">~15 นาที →</span></a>
+  <a class="card link" href="feature.html"><h3>2. /feature ทีละขั้น</h3><p class="small">ตามการ์ดหนึ่งใบตั้งแต่พิมพ์ <code>/feature KS-xx</code> จนการ์ดขึ้น Done พร้อมตัวอย่างแชท</p><span class="go">~15 นาที →</span></a>
+  <a class="card link" href="spike.html"><h3>3. /spike ทีละขั้น</h3><p class="small">จาก requirement ก้อนใหญ่ สู่แผนที่อนุมัติแล้วและการ์ดบน Jira</p><span class="go">~10 นาที →</span></a>
+  <a class="card link" href="stuck.html"><h3>4. เมื่องานติด</h3><p class="small">ตีกลับซ้ำ, spec ผิด, AI เถียงกัน: dispute, SPEC_ISSUE, park และคำตัดสินที่ผูกมัด</p><span class="go">~10 นาที →</span></a>
+  <a class="card link" href="safety.html"><h3>5. อะไรบังคับจริง</h3><p class="small">แยกให้ออกว่าอะไรเครื่องบังคับ อะไรเป็นแค่กติกาใน prompt และช่องโหว่ที่รู้แล้ว</p><span class="go">~8 นาที →</span></a>
+  <a class="card link" href="cases.html"><h3>6. กรณีศึกษา</h3><p class="small">KS-118, SPIKE-1, KS-160 เกิดอะไรขึ้นจริง เสียเงินเท่าไร และ framework เปลี่ยนเพราะอะไร</p><span class="go">~10 นาที →</span></a>
+</div>
 
-  <h2>คุณต้องพิมพ์อะไร ที่จุดไหน</h2>
-  <div class="tbl"><table>
-    <tr><th>เมื่อเห็น</th><th>คุณพิมพ์</th></tr>
-    <tr><td><span class="st">NEEDS_ANSWERS</span> คำถาม 0–5 ข้อ</td><td>คำตอบ (ข้อที่ไม่ตอบจะใช้ค่า <code>[default]</code>)</td></tr>
-    <tr><td><span class="st">READY_FOR_GATE1</span> spec</td><td><span class="say">อนุมัติ Gate 1</span> หรือสิ่งที่อยากให้แก้ใน spec</td></tr>
-    <tr><td><span class="st ok">READY_FOR_GATE2</span> หน้าผลตรวจ</td><td><span class="say">อนุมัติ Gate 2</span> หรือสิ่งที่ต้องแก้</td></tr>
-    <tr><td><span class="st warn">STALE</span> มีไฟล์เปลี่ยนหลัง review</td><td>ดูรายชื่อไฟล์ ถ้าแก้ได้พิมพ์ <span class="say">review ใหม่</span></td></tr>
-    <tr><td><span class="st warn">ESCALATE</span> โดนตีกลับครบรอบ</td><td>ตัดสินว่าจะ <span class="say">ทำต่อ + แนวทาง</span> หรือหยุด</td></tr>
-    <tr><td><span class="st bad">ERROR</span> / <span class="st bad">BLOCKED</span></td><td>อ่านเหตุผล ถ้าไม่แน่ใจ ถาม Claude Code (อย่าให้ Gemini เดา)</td></tr>
-  </table></div>
+<h2>สถานะตอนนี้</h2>
+<div class="grid g4">
+  <div class="card stat"><b>v0.3.3</b><span>ปลด deadlock · 9 พ.ย. 2026</span></div>
+  <div class="card stat"><b>2 / 10</b><span>การ์ดจริงช่วง pilot (KS-118, KS-160)</span></div>
+  <div class="card stat"><b>54</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
+  <div class="card stat"><b>2</b><span>repo ที่ติดตั้ง: epolicy, hbs-strangler-service</span></div>
+</div>
+<p class="small muted">รายละเอียดเวอร์ชัน แผนต่อจากนี้ และเกณฑ์ยุติ pilot อยู่ที่ <a href="roadmap.html">สถานะ เวอร์ชัน Roadmap</a></p>
 
-  <h2>ภาษา</h2>
-  <p>spec, คำถาม และหน้า Gate 2 จะเป็นภาษาเดียวกับข้อความล่าสุดที่คุณพิมพ์ในการ์ดนั้น (โจทย์ LOCAL หรือคำตอบคำถาม) ถ้ายังไม่ได้พิมพ์อะไรใช้ภาษาไทย อยากคุยอังกฤษก็พิมพ์อังกฤษได้เลย</p>
-
-  <h2>เอกสาร</h2>
-  <p>ไฟล์ใน <code>docs_allow</code> commit เองได้โดยไม่ต้องมีการ์ดและไม่ต้องใช้ <code>--no-verify</code> ถ้าเอกสารเปลี่ยนระหว่างทำการ์ด arbiter จะไม่รวมเข้า commit ของการ์ด และบอกไว้ที่หน้า COMMITTED ให้ commit แยก</p>
-
-  <h2>สิ่งที่คุณทำเองเท่านั้น</h2>
-  <ul>
-    <li>commit <code>.arbiter/config.json</code> (ต้อง <code>--no-verify</code>) ถ้า config ในเครื่องไม่ตรงกับที่ commit arbiter จะหยุดทำงาน</li>
-    <li>แก้ <code>AGENTS.md</code> / <code>CLAUDE.md</code></li>
-    <li>deploy และงานบนระบบจริง</li>
-  </ul>
-
-  <h2>เมื่อไรควรเรียก Claude Code</h2>
-  <ul>
-    <li>หลังการ์ดจบ พิมพ์ <span class="say">retro KS-123</span> Claude Code จะอ่าน transcript ของ Gemini + โฟลเดอร์การ์ด แล้วจดลง <code>LESSONS.md</code></li>
-    <li>เจอ ERROR ที่ไม่เข้าใจ หรือ Gemini ทำแปลก</li>
-    <li>จะแก้ arbiter เอง (ต้องผ่าน Gate 1/2 เหมือนงานอื่น)</li>
-  </ul>
-
-  <h2>ติดตั้ง / อัปเดตในโปรเจกต์</h2>
-<pre><code>python C:\local-code-repo\arbiter-agent-harness\install.py --project &lt;repo&gt; ^
-  --verify "unit=&lt;คำสั่งเทสต์&gt;" --docs-allow "docs/**" --docs-allow "*.md" ^
-  --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"   &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่านได้
-
-# แล้วคน commit เอง
-git add .arbiter/config.json .arbiter/.gitignore .agent/workflows/
-git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
-  <p>รันซ้ำได้ (idempotent): คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ และเขียน workflow ใหม่ ถ้าย้ายโฟลเดอร์ arbiter ต้องรัน install ใหม่ทุกโปรเจกต์ เพราะ hook ชี้ path เต็ม</p>
-</section>
-
-<!-- ============================================================ HOW -->
-<section class="page" id="how">
-  <div class="eyebrow">ทำงานอย่างไร</div>
-  <h1>ใครทำอะไร และใครตัดสิน</h1>
-  <p class="lede">หลักแกน: คนที่ถูกตรวจห้ามเขียนโจทย์ให้คนตรวจ Gemini ส่งแค่รหัสการ์ดกับคำพูดของคุณตามตัวอักษร arbiter สร้าง prompt จาก template เอง Claude อ่านต้นทางเอง และผลผ่าน/ไม่ผ่านมาจาก script</p>
-
-  <div class="tbl"><table>
-    <tr><th>บทบาท</th><th>ทำ</th><th>ห้าม</th></tr>
-    <tr><td><span class="role r-human">คุณ</span></td><td>ตอบคำถาม, Gate 1, Gate 2, commit config</td><td>-</td></tr>
-    <tr><td><span class="role r-gemini">Gemini</span> (Antigravity)</td><td>รัน arbiter, เขียนโค้ดใน scope, แสดงข้อความตามตัวอักษร, ขยับ Jira หลัง commit</td><td>เขียน prompt ให้ Claude, แก้ <code>.arbiter/</code>, อ่านซอร์ส arbiter, commit โค้ดเอง, checkout/reset/stash ไฟล์</td></tr>
-    <tr><td><span class="role r-claude">Claude</span> (<code>claude -p</code>)</td><td>ร่าง spec + คำถาม, review diff</td><td>แก้ไฟล์ใดๆ (มีแค่ Read/Grep/Glob + Jira อ่านอย่างเดียว)</td></tr>
-    <tr><td><span class="role r-machine">arbiter</span> (script)</td><td>สร้าง prompt, รัน verify, ตรวจ scope, นับรอบ, ตัดสิน, commit</td><td>-</td></tr>
-  </table></div>
-
-  <h2>ลำดับงานของ /feature</h2>
-  <ol class="flow">
-    <li><div class="step"><span class="role r-gemini">Gemini</span> <code>arbiter spec KS-xx</code> หรือ <code>spec --local "..."</code></div>
-      <div class="detail">Claude อ่านการ์ด Jira (หรือ <code>intent.md</code>) + โค้ด แล้วตอบ spec + คำถาม · การ์ด KS ต้องมีหลักฐานว่าเรียก <code>jira_get_issue</code> ของการ์ดนั้นสำเร็จจริง ไม่งั้น ERROR</div></li>
-    <li><div class="step"><span class="role r-human">คุณ</span> ตอบคำถาม → <code>arbiter answer</code></div>
-      <div class="detail">Claude session เดิม (resume) ปรับ spec · การตอบหรือขอแก้จะยกเลิก Gate 1 เดิมเสมอ</div></li>
-    <li class="gate"><div class="step"><span class="role r-human">คุณ</span> Gate 1 → <code>arbiter approve</code></div>
-      <div class="detail">บันทึกข้อความอนุมัติ + sha256 ของ spec ถ้า spec ถูกแก้หลังนี้ ทุกขั้นถัดไปจะ BLOCKED</div></li>
-    <li><div class="step"><span class="role r-gemini">Gemini</span> เขียนโค้ดใน <code>scope_allow</code> → <code>arbiter review</code></div>
-      <div class="detail">เครื่องตรวจก่อน: scope → verify (config + spec) → tree-stable · ไม่ผ่านจะไม่เรียก Claude เลย · ผ่านแล้ว Claude อ่าน spec + diff + evidence ตัดสิน PASS/FAIL (FAIL ถ้ามี BLOCKER/MAJOR) · FAIL → Gemini แก้เอง · ตีกลับครบ 2 รอบ หรือ gate ครบ 6 รอบ → ESCALATE</div></li>
-    <li class="gate"><div class="step"><span class="role r-human">คุณ</span> Gate 2 → <code>arbiter commit</code></div>
-      <div class="detail">ตรวจซ้ำเอง: spec ตรง Gate 1, โค้ดตรงกับที่ review (ไม่นับเอกสารและ <code>.arbiter/</code>), scope, index ไม่มีไฟล์แอบ stage · commit พร้อม trailer <code>Arbiter-Card</code> / <code>Arbiter-Tree</code> / <code>Arbiter-Gate2</code></div></li>
-    <li><div class="step"><span class="role r-gemini">Gemini</span> ขยับการ์ดบน Jira</div>
-      <div class="detail">Story → UAT / QA, Task → Done · การ์ด LOCAL ห้ามแตะ Jira</div></li>
-  </ol>
-
-  <h2>สิ่งที่เครื่องบังคับ (ไม่ใช่แค่กฎใน prompt)</h2>
-  <div class="tbl"><table>
-    <tr><th>ที่ไหน</th><th>บังคับอะไร</th></tr>
-    <tr><td><code>arbiter review</code></td><td>scope, verify ต้อง exit 0, คำสั่ง verify จาก spec ห้ามมี <code>| &amp; ; &lt; &gt; `</code>, โค้ดห้ามเปลี่ยนระหว่างรัน verify, Claude ต้องตอบตาม marker</td></tr>
-    <tr><td><code>arbiter commit</code></td><td>evidence pass + review PASS, spec sha ตรง, ไม่มี drift, staged == reviewed</td></tr>
-    <tr><td>git pre-commit (fail-closed)</td><td>โค้ด commit ได้เฉพาะผ่าน <code>arbiter commit</code> ที่มี Gate 2 ของ tree นั้น · scope ของการ์ด ACTIVE · secret (private key, AWS, Atlassian, GitHub token) · <code>.env</code>/คีย์ SSH · ห้าม commit <code>config.json</code> · เอกสารล้วนผ่านได้</td></tr>
-    <tr><td>config</td><td>ใช้ฉบับที่ commit แล้วเท่านั้น (hook อ่าน <code>docs_allow</code> จาก HEAD)</td></tr>
-    <tr><td><code>claude -p</code></td><td><code>--tools Read,Grep,Glob</code> · ปฏิเสธ Edit/Write/Bash/PowerShell · การ์ด LOCAL ไม่มีเครื่องมือ Jira</td></tr>
-  </table></div>
-
-  <h2>โครง 3 ชั้น</h2>
-  <div class="tbl"><table>
-    <tr><th>ชั้น</th><th>คืออะไร</th><th>ตอนนี้</th></tr>
-    <tr><td>1. Safety floor</td><td>โค้ดที่ใช้กับทุกงาน ไม่กิน context</td><td>git pre-commit ✅ · jira-guard ✅ · pre-push ❌ · กันเขียน HBS DB/prod ❌</td></tr>
-    <tr><td>2. Track</td><td>ท่าทำงานตามขนาดงาน</td><td><code>/feature</code> <code>/spike</code> ✅ · <code>/poc</code> <code>/quick</code> Ops ❌</td></tr>
-    <tr><td>3. Pack</td><td>ความรู้เฉพาะเรื่อง โหลดเมื่อเกี่ยว</td><td>ยังไม่มี (jira-ks, spring-boot, docker-deploy, windows-ps, pch-network)</td></tr>
-  </table></div>
-</section>
-
-<!-- ============================================================ ROADMAP -->
-<section class="page" id="roadmap">
-  <div class="eyebrow">Roadmap</div>
-  <h1>แผนต่อจากนี้</h1>
-  <p class="lede">หลักที่ตกลงไว้: ใช้การ์ดจริงก่อน แล้วเพิ่มเฉพาะเรื่องที่เจอซ้ำ ไม่สร้างทุก track ล่วงหน้า แต่ละข้อมีเงื่อนไขว่า “ทำเมื่อไร”</p>
-
-  <div class="lanes">
-    <div class="card lane">
-      <h3>ตอนนี้</h3>
-      <ul>
-        <li><b>ใช้ <code>/feature</code> กับการ์ดจริง</b> ทั้ง KS และ LOCAL ให้ครบ 10 ใบ<span class="why">ตอนนี้ 1/10 · retro ทุกใบ</span></li>
-        <li><b>จด LESSONS</b> ทุกการ์ด<span class="why">เรื่องที่เจอซ้ำ = สิ่งที่ควรสร้างต่อ</span></li>
-      </ul>
-    </div>
-    <div class="card lane">
-      <h3>ถัดไป (มีตัวกระตุ้น)</h3>
-      <ul>
-        <li><b><code>/poc</code></b> การ์ด POC ที่ spike เสนอ: worktree บน <code>spike/*</code> ห้าม merge (pre-push ดัก trailer) ผลเป็น note ให้ spike อ่านต่อ<span class="why">ทำเมื่อ: มีการ์ด POC จริงใบแรก · แบบอยู่ที่ docs/spike-design.md ข้อ 6</span></li>
-        <li><b><code>/quick</code></b> งาน ≤2 ไฟล์: spec สั้น → เทสต์ fail ก่อน → แก้ → review · Gate 2 จุดเดียว<span class="why">ทำเมื่อ: /feature หนักเกินกับงานเล็กจริง</span></li>
-        <li><b>Ops</b> runbook → dry-run → คนอนุมัติ → post-check → rollback<span class="why">ทำเมื่อ: มีการ์ด deploy หรือ DB จริง</span></li>
-      </ul>
-    </div>
-    <div class="card lane">
-      <h3>ภายหลัง</h3>
-      <ul>
-        <li><b>Packaging</b> <code>pip install -e</code> + shim hook ที่ fail-closed<span class="why">ตอนนี้ย้ายโฟลเดอร์แล้ว hook หายเงียบ</span></li>
-        <li><b>ปิด finding 1</b> เก็บหลักฐานใน <code>.git/arbiter/</code>, approve ต้องใช้รหัสที่คนเห็นเท่านั้น</li>
-        <li><b>CI ตรวจ trailer <code>Arbiter-Tree</code></b><span class="why">ปิดช่อง <code>--no-verify</code></span></li>
-        <li><b>pre-push</b> และ <b>Claude hook กัน HBS DB/prod</b></li>
-        <li><b>pack <code>jira-ks</code></b> แล้วลบ <code>.agents/rules/jira-safety.md</code> ใน epolicy</li>
-        <li><b>Gate 2 จด LESSONS 1 บรรทัดอัตโนมัติ</b></li>
-        <li><b>ตรวจ transcript ของ Gemini อัตโนมัติ</b> ว่าส่งคำพูดคุณต่อตรงไหม</li>
-      </ul>
-    </div>
-  </div>
-
-  <h2>ไม่ทำ (จนกว่าจะมีเหตุ)</h2>
-  <p><code>/greenfield</code> (รอโปรเจกต์ใหม่จริง) · migration · ให้ Claude เป็นคนคุมงานแทน Gemini · dashboard · ชุดทดสอบพฤติกรรมโมเดล</p>
-
-  <h2>คำถามที่ยังค้าง</h2>
-  <ol>
-    <li>ใครเขียน AC: คุณเขียนเอง หรือ Claude ร่างแล้วคุณอนุมัติที่ Gate 1 (ตอนนี้เป็นแบบหลัง)</li>
-    <li>จะให้คนอื่นในทีมใช้ด้วยหรือไม่</li>
-  </ol>
-
-  <h2>ตัวชี้วัดช่วง pilot</h2>
-  <p>เวลาที่คุณใช้ต่อ gate · จำนวนรอบที่ต้องแก้ · ปัญหาที่คุณเจอตอน Gate 2 แต่ AI ไม่เจอ · bug ที่หลุดหลัง Done · ค่า Claude ต่อการ์ด</p>
-</section>
-
-<!-- ============================================================ LESSONS -->
-<section class="page" id="lessons">
-  <div class="eyebrow">บทเรียนและข้อจำกัด</div>
-  <h1>เรียนรู้อะไรมาแล้ว</h1>
-
-  <h2>ประวัติเวอร์ชัน</h2>
-  <div class="tbl"><table>
-    <tr><th>เวอร์ชัน</th><th>วันที่</th><th>เปลี่ยนอะไร</th></tr>
-    <tr><td><code>845eee2</code> v0.1.0</td><td>4 พ.ย.</td><td><code>/feature</code> แรก: spec / answer / approve / review / commit / status, pre-commit, 19 เทสต์</td></tr>
-    <tr><td><code>3bd7be9</code></td><td>5 พ.ย.</td><td>ต้องอ่าน Jira สำเร็จจริงก่อนรับ spec (Jira MCP ยัง pending ตอนเริ่ม <code>claude -p</code>)</td></tr>
-    <tr><td><code>af02f35</code> v0.2.0</td><td>6 พ.ย.</td><td>การ์ด LOCAL, บรรทัด ▶, STALE บอกไฟล์, <code>docs_allow</code>, config จาก HEAD, hook ต้องเห็น Gate 2, ภาษาตามผู้ใช้</td></tr>
-    <tr><td>v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>spike.read_dirs</code>, /feature อ่านแผนของ spike เอง, แยก <code>arbiter_claude.py</code>, 41 เทสต์</td></tr>
-    <tr><td>v0.3.1</td><td>9 พ.ย.</td><td>spike: Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน) หน้าการ์ดแจ้งเมื่อไม่มี Story</td></tr>
-    <tr><td>v0.3.2</td><td>9 พ.ย.</td><td>ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> นับเป็นงานของการ์ดแม้อยู่ใน <code>docs_allow</code> (KS-160) · review ที่ไม่มีไฟล์เปลี่ยนเป็น BLOCKED ไม่ใช่ FAIL · arbiter ดึงการ์ด KS ขึ้นบอร์ดเองตอน <code>spike link</code> และ <code>spec KS-xx</code> (<code>bin/arbiter_board.py</code>) · 47 เทสต์</td></tr>
-    <tr><td>v0.3.3</td><td>9 พ.ย.</td><td>ปลด deadlock (KS-160): คำตัดสินของผู้ใช้ลง <code>decisions.md</code> และผูก reviewer · reviewer ตอบ <code>SPEC_ISSUE</code> ได้ (ไม่นับเป็นรอบตีกลับ) · <code>arbiter dispute</code> Builder แย้งด้วยคำสั่งพิสูจน์ที่ arbiter รันเอง แล้ว Architect ชี้ขาด UPHOLD / REVISE_SPEC / NEED_HUMAN (สูงสุด 2 ครั้ง) · <code>park</code> / <code>unpark</code> · หน้า ESCALATE มี 3 ทางออก · spec ใหม่รีเซ็ตงบรอบ · model: ร่าง spec ด้วย opus · high เสมอ ขั้นรีวิว/dispute ใช้ที่การ์ดจาก spike แนะนำ โดยแจ้งในหน้า Gate 1 ถ้าคุณก้องไม่ทักในคำอนุมัติก็ใช้ตามนั้น (ทักได้ เช่น "อนุมัติ Gate 1 ใช้ opus high") สั่งเองตอนเริ่มการ์ดได้ด้วย <code>spec --model --effort</code> · บันทึก model ใน sessions.jsonl · workflow ห้ามเลี่ยงเครื่องตรวจและห้ามแต่งข้อมูล · 54 เทสต์</td></tr>
-  </table></div>
-
-  <h2>บทเรียนจาก KS-118 (การ์ดจริงใบแรก)</h2>
-  <div class="tbl"><table>
-    <tr><th>เกิดอะไร</th><th>แก้แล้ว</th></tr>
-    <tr><td>Claude อ่าน Jira ไม่ได้ แล้วร่าง spec จากการเดา · Gemini แต่งเหตุผลเองและแนะนำคำตอบ</td><td>ตรวจการเรียก <code>jira_get_issue</code> จาก stream · workflow ห้ามตีความ/แนะนำ</td></tr>
-    <tr><td>คุณต้องถาม “ต้องทำอะไรต่อ” 3 ครั้ง</td><td>บรรทัด ▶ สิ่งที่คุณต้องทำ</td></tr>
-    <tr><td>STALE ไม่บอกไฟล์ → Gemini พยายาม <code>git checkout</code> รายงาน KS-140 ของคุณ (รอดเพราะคุณกดปฏิเสธ)</td><td>STALE แสดงไฟล์ · ห้าม checkout/restore/reset/stash/clean</td></tr>
-    <tr><td>เอกสารนอกการ์ดเปลี่ยน → review ใหม่ทั้งรอบ ($0.79) และต้อง <code>--no-verify</code></td><td><code>docs_allow</code></td></tr>
-    <tr><td>Gemini เปิดอ่าน <code>arbiter.py</code> หา env ที่ hook เชื่อ</td><td>hook ต้องเห็น Gate 2 · ห้ามอ่านซอร์ส arbiter</td></tr>
-    <tr><td>หน้า Gate 2 ภาษาอังกฤษปน</td><td>ภาษาตามข้อความล่าสุดของคุณ (ค่าตั้งต้นไทย)</td></tr>
-  </table></div>
-  <p>รายละเอียดเต็มอยู่ใน <code>LESSONS.md</code></p>
-
-  <h2>ข้อจำกัดที่รู้แล้ว</h2>
-  <ul>
-    <li>ไฟล์ใน <code>.arbiter/</code> (approvals, evidence, state) agent ยังเขียนได้ การข้าม Gate 2 ตอนนี้ต้องปลอมการอนุมัติของคน ซึ่งเห็นได้ใน transcript แต่ยังไม่ถูกบล็อก</li>
-    <li>agent รัน <code>approve</code> หรือ <code>--continue</code> แทนคนได้ ตรวจย้อนหลังได้จาก transcript เท่านั้น</li>
-    <li><code>git commit --no-verify</code> ข้าม hook ได้ (ตั้งใจให้คนใช้)</li>
-    <li>haiku ตัดสิน review ไม่สม่ำเสมอ ใช้ได้แค่ smoke test · reviewer จริงใช้ opus</li>
-    <li>Antigravity รันคำสั่งผ่าน <code>powershell -Command</code> ซึ่งทำให้ exit code ไม่ใช่ 0 กลายเป็น 1 ทั้งหมด จึงสื่อสารกับ Gemini ผ่านบรรทัด <code>STATUS:</code></li>
-  </ul>
-</section>
-
-<!-- ============================================================ REF -->
-<section class="page" id="ref">
-  <div class="eyebrow">อ้างอิง</div>
-  <h1>คำสั่ง ไฟล์ และค่าตั้ง</h1>
-
-  <h2>คำสั่ง <code>python bin/arbiter.py ...</code></h2>
-  <div class="tbl"><table>
-    <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
-    <tr><td><code>spec KS-xx</code></td><td>เริ่มการ์ด Jira</td></tr>
-    <tr><td><code>spec --local "โจทย์"</code></td><td>เริ่มงานที่ไม่มีการ์ด (ตั้ง LOCAL-n ให้)</td></tr>
-    <tr><td><code>answer KEY "ข้อความ"</code></td><td>ตอบคำถาม / ขอแก้ spec (ยกเลิก Gate 1)</td></tr>
-    <tr><td><code>approve KEY "ข้อความ"</code></td><td>Gate 1</td></tr>
-    <tr><td><code>review KEY [--continue "ข้อความ"]</code></td><td>ตรวจหลังเขียนโค้ด / ทำต่อหลัง ESCALATE</td></tr>
-    <tr><td><code>commit KEY "ข้อความ" [-m msg]</code></td><td>Gate 2</td></tr>
-    <tr><td><code>status [KEY]</code></td><td>ดูว่าการ์ดอยู่ขั้นไหน</td></tr>
-  </table></div>
-
-  <h2>STATUS</h2>
-  <div class="tbl"><table>
-    <tr><th>STATUS</th><th>ความหมาย</th></tr>
-    <tr><td><span class="st">NEEDS_ANSWERS</span></td><td>มีคำถามรอคุณ</td></tr>
-    <tr><td><span class="st">READY_FOR_GATE1</span></td><td>spec พร้อมให้อนุมัติ</td></tr>
-    <tr><td><span class="st ok">APPROVED_GATE1</span></td><td>Gemini เริ่มเขียนโค้ด</td></tr>
-    <tr><td><span class="st bad">FAIL</span></td><td>gate หรือ review ไม่ผ่าน Gemini แก้เอง</td></tr>
-    <tr><td><span class="st warn">ESCALATE</span></td><td>ครบรอบแล้ว ให้คุณตัดสิน</td></tr>
-    <tr><td><span class="st ok">READY_FOR_GATE2</span></td><td>ผ่านทั้งเครื่องและ reviewer รออนุมัติ</td></tr>
-    <tr><td><span class="st warn">STALE</span></td><td>โค้ดเปลี่ยนหลัง review</td></tr>
-    <tr><td><span class="st ok">COMMITTED</span></td><td>commit แล้ว</td></tr>
-    <tr><td><span class="st bad">BLOCKED</span> / <span class="st bad">ERROR</span></td><td>หยุด อ่านเหตุผล</td></tr>
-    <tr><td><span class="st">INFO</span></td><td>ผลของ <code>status</code></td></tr>
-  </table></div>
-
-  <h2>ไฟล์ในโปรเจกต์ <code>.arbiter/</code></h2>
-<pre><code>.arbiter/
-  config.json            ค่าตั้ง (คน commit เท่านั้น)
-  CURRENT_STATE.md       การ์ดล่าสุดที่ commit
-  ACTIVE                 การ์ดที่กำลังทำ (gitignored)
-  tasks/&lt;KEY&gt;/
-    intent.md            โจทย์ของคุณตามตัวอักษร (LOCAL)
-    spec.md              spec + บล็อก ```arbiter (scope_allow, verify)
-    questions.md         คำถามที่ค้าง
-    answers.md           คำตอบของคุณตามตัวอักษร
-    approvals.json       Gate 1 (sha ของ spec) / Gate 2 (tree)
-    evidence.json        ผลตรวจจากเครื่องรอบล่าสุด
-    review.md            ผล review ทุกรอบ
-    gate2.md             หน้า Gate 2
-    sessions.jsonl       session ของ Claude + ค่าใช้จ่าย + jira_read
-    state.json           จำนวนรอบ
-    gate-rN-*.log        log ของ verify (gitignored)</code></pre>
-
-  <h2><code>config.json</code></h2>
-  <div class="tbl"><table>
-    <tr><th>key</th><th>ค่าตั้งต้น</th><th>ใช้ทำอะไร</th></tr>
-    <tr><td><code>key_pattern</code></td><td><code>KS-\d+</code></td><td>รหัสการ์ด Jira ที่รับ (LOCAL-n รับเสมอ)</td></tr>
-    <tr><td><code>language</code></td><td><code>th</code></td><td>ภาษาเมื่อคุณยังไม่ได้พิมพ์อะไรในการ์ด</td></tr>
-    <tr><td><code>docs_allow</code></td><td><code>[]</code></td><td>glob ของเอกสารที่ commit ได้โดยไม่มีการ์ด (ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> ยังเป็นงานของการ์ด)</td></tr>
-    <tr><td><code>verify</code></td><td>-</td><td><code>[{name, cmd}]</code> เทสต์ชุดหลักของโปรเจกต์</td></tr>
-    <tr><td><code>verify_timeout_sec</code></td><td>3600</td><td></td></tr>
-    <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE (อนุมัติ spec ใหม่แล้วนับใหม่)</td></tr>
-    <tr><td><code>max_disputes</code></td><td>2</td><td>จำนวน <code>dispute</code> ต่อการ์ด เกินแล้ว ESCALATE</td></tr>
-    <tr><td><code>claude.*</code></td><td>opus, high, 1200, require_jira true</td><td><code>spec_model</code>, <code>review_model</code>, <code>effort</code>, <code>timeout_sec</code>, <code>require_jira</code></td></tr>
-    <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code> {ชื่อ: path} ที่การ์ดเลือกได้, <code>read_dirs</code> repo อื่นที่ Claude อ่าน, <code>max_points</code>, <code>max_rounds_resume</code> (เกินแล้วเริ่ม session ใหม่จากไฟล์), <code>budget_usd</code> (เตือน)</td></tr>
-    <tr><td><code>jira_board_id</code></td><td>5335</td><td>บอร์ดที่ arbiter ดึงการ์ด KS ขึ้นไป (ส่งได้เฉพาะ KS-n) credential จาก env <code>JIRA_*</code> หรือ Jira MCP ใน <code>~/.claude.json</code> ถ้าไม่สำเร็จจะบอกให้ลากเอง ไม่บล็อกงาน</td></tr>
-  </table></div>
-  <p>env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (เช่น haiku), <code>ARBITER_CLAUDE_CMD</code> (fake Claude ในเทสต์), <code>ARBITER_BOARD_FAKE</code> (เทสต์: ไม่เรียก Jira จริง)</p>
-
-  <h2>Repo ของ arbiter</h2>
-<pre><code>C:\local-code-repo\arbiter-agent-harness\
-  bin/arbiter.py, arbiter_core.py   CLI + helper
-  floor/git/pre-commit              hook (core.hooksPath ชี้มาที่นี่)
-  prompts/                          spec, answer, review, review_prev, source_jira, source_local
-  adapters/antigravity/workflows/   feature.md (คัดลอกไปโปรเจกต์ตอน install)
-  install.py                        ติดตั้ง / อัปเดต
-  tests/                            python -m unittest discover -s tests
-  DIRECTION.md                      ทิศทางและการตัดสินใจทั้งหมด
-  LESSONS.md                        บทเรียนจากงานจริง
-  docs/index.html                   ไฟล์นี้ · docs/overview.html ภาพรวม v0.1 เดิม</code></pre>
-  <p>ตรวจย้อนหลังสิ่งที่ Gemini ทำ: <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code></p>
-</section>
-
-<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.3) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · ต้นทางของการตัดสินใจคือ <code>DIRECTION.md</code> · บทเรียนรายวันอยู่ใน <code>LESSONS.md</code></footer>
 </main>
 </div>
-<script>
-(function () {
-  var root = document.documentElement;
-  root.classList.add("js");
-  try { var t = localStorage.getItem("arbiter-theme"); if (t) root.setAttribute("data-theme", t); } catch (e) {}
-  document.getElementById("themeBtn").addEventListener("click", function () {
-    var dark = root.getAttribute("data-theme") === "dark" ||
-      (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
-    var next = dark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    try { localStorage.setItem("arbiter-theme", next); } catch (e) {}
-  });
-  var pages = Array.prototype.slice.call(document.querySelectorAll("section.page"));
-  var links = Array.prototype.slice.call(document.querySelectorAll("nav.toc a"));
-  function show() {
-    var id = (location.hash || "#now").slice(1);
-    if (!document.getElementById(id)) id = "now";
-    pages.forEach(function (p) { p.classList.toggle("on", p.id === id); });
-    links.forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + id); });
-    window.scrollTo(0, 0);
-  }
-  window.addEventListener("hashchange", show);
-  show();
-})();
-</script>
+<script src="assets/site.js"></script>
 </body>
 </html>

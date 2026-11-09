@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>สถานะและ Roadmap · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">อ้างอิง</div>
+<h1>สถานะ เวอร์ชัน และ Roadmap</h1>
+<p class="lede">หน้านี้อัปเดตทุกครั้งที่ arbiter ขึ้นเวอร์ชัน หลักที่ตกลงไว้: <b>ใช้กับการ์ดจริงก่อน แล้วเพิ่มเฉพาะเรื่องที่เจอซ้ำ</b> ไม่สร้างทุก track ล่วงหน้า</p>
+
+<h2>มีอะไรใช้ได้แล้ว</h2>
+<div class="tbl"><table>
+  <tr><th>ส่วน</th><th>สถานะ</th><th>หมายเหตุ</th></tr>
+  <tr><td><code>/feature KS-xx</code></td><td><span class="st ok">ใช้จริง</span></td><td>KS-118 (epolicy), KS-160 (strangler)</td></tr>
+  <tr><td><code>/spike</code></td><td><span class="st ok">ใช้จริง</span></td><td>SPIKE-1 → KS-160, KS-166</td></tr>
+  <tr><td><code>/feature &lt;โจทย์&gt;</code> (LOCAL)</td><td><span class="st">พร้อม</span></td><td>ทดสอบกับ Claude จริงใน repo ทดลองแล้ว ยังไม่ได้ใช้กับงานจริง</td></tr>
+  <tr><td>ปลด deadlock</td><td><span class="st">พร้อม</span></td><td>decisions.md · SPEC_ISSUE · dispute · park ทดสอบกับ fake Claude แล้ว</td></tr>
+  <tr><td>ดึงการ์ดขึ้นบอร์ด</td><td><span class="st ok">ใช้จริง</span></td><td>ตอน <code>spike link</code> และ <code>spec KS-xx</code></td></tr>
+  <tr><td>Safety floor: git pre-commit</td><td><span class="st ok">ทำงาน</span></td><td>scope, secret, Gate 1/2, ไฟล์ต้องห้าม, เอกสารล้วน commit ได้เอง</td></tr>
+  <tr><td>Jira KS เท่านั้น</td><td><span class="st ok">ทำงาน</span></td><td>3 ชั้น (credential, filter, jira-guard)</td></tr>
+  <tr><td><code>/poc</code>, <code>/quick</code>, Ops</td><td><span class="st">ยังไม่ทำ</span></td><td>รอตัวกระตุ้น ดูด้านล่าง</td></tr>
+</table></div>
+
+<h2>Pilot</h2>
+<div class="tbl"><table>
+  <tr><th>repo</th><th>ติดตั้ง</th><th>หมายเหตุ</th></tr>
+  <tr><td><code>C:\local-code-repo\hbs3\epolicy</code> (branch <code>dev</code>)</td><td>0.3.3</td><td>verify: <code>mvn test</code> (ไม่รวม integration) + spotless · docs_allow: <code>kong-workspace/docs/**</code>, <code>*.md</code>, <code>kong-workspace/*.md</code></td></tr>
+  <tr><td><code>C:\local-code-repo\hbs3\hbs-strangler-service</code></td><td>0.3.3</td><td>ยังไม่มีโค้ด · <code>read_dirs</code> = hbs-legacy/hbs-web-core · docs_allow: <code>kong-workspace/**</code>, <code>*.md</code></td></tr>
+</table></div>
+<p><b>การ์ดจริง 2 / 10</b>: KS-118 → <code>e3a4e5a</code> ($6.24, ไม่ถูกตีกลับ) · KS-160 → <code>4cb0dc3</code> ($9.52, ตีกลับ 3 รอบ, ทำให้เกิด v0.3.2–0.3.3)</p>
+<div class="callout warn"><span class="t">เกณฑ์ยุติที่ตกลงไว้</span>
+ใช้ครบ 10 การ์ดแล้วไม่ดีกว่า AeroHarness → เก็บแค่ <code>arbiter review</code> กับ hook กลับไปเสริม AeroHarness แทน</div>
+
+<h2>ตัวชี้วัดช่วง pilot</h2>
+<p>เวลาที่คุณใช้ต่อ gate · จำนวนรอบที่ต้องแก้ · ปัญหาที่คุณเจอตอน Gate 2 แต่ AI ไม่เจอ · bug ที่หลุดหลัง Done · ค่า Claude ต่อการ์ด</p>
+
+<h2>ประวัติเวอร์ชัน</h2>
+<div class="tbl"><table>
+  <tr><th>เวอร์ชัน</th><th>วันที่</th><th>เปลี่ยนอะไร</th></tr>
+  <tr><td><code>845eee2</code> v0.1.0</td><td>4 พ.ย.</td><td><code>/feature</code> แรก: spec / answer / approve / review / commit / status, pre-commit, 19 เทสต์</td></tr>
+  <tr><td><code>3bd7be9</code></td><td>5 พ.ย.</td><td>ต้องอ่าน Jira สำเร็จจริงก่อนรับ spec</td></tr>
+  <tr><td><code>af02f35</code> v0.2.0</td><td>6 พ.ย.</td><td>การ์ด LOCAL, บรรทัด ▶, STALE บอกไฟล์, <code>docs_allow</code>, config จาก HEAD, hook ต้องเห็น Gate 2, ภาษาตามผู้ใช้</td></tr>
+  <tr><td><code>eb35c3e</code> v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>read_dirs</code>, /feature อ่านแผนของ spike เอง, 41 เทสต์</td></tr>
+  <tr><td><code>2a7c4ed</code> v0.3.1</td><td>9 พ.ย.</td><td>Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน)</td></tr>
+  <tr><td><code>992f3f8</code> v0.3.2</td><td>9 พ.ย.</td><td>ไฟล์ใน scope_allow เป็นงานของการ์ดแม้อยู่ใน docs_allow · ไม่มีไฟล์เปลี่ยน = BLOCKED · ดึงการ์ด KS ขึ้นบอร์ดเอง · 47 เทสต์</td></tr>
+  <tr><td><code>3f510e2</code> v0.3.3</td><td>9 พ.ย.</td><td>ปลด deadlock: decisions.md ผูก reviewer · SPEC_ISSUE · dispute (UPHOLD / REVISE_SPEC / NEED_HUMAN) · park / unpark · ESCALATE 3 ทาง · spec ใหม่รีเซ็ตเพดาน · model policy (spec Opus High, รีวิวแจ้งที่ Gate 1) · workflow ห้ามเลี่ยงเครื่องตรวจและห้ามแต่งข้อมูล · 54 เทสต์ · คู่มือหลายหน้า</td></tr>
+</table></div>
+
+<h2>Roadmap</h2>
+<h3>ตอนนี้</h3>
+<ul>
+  <li>ใช้ <code>/feature</code> กับการ์ดจริงให้ครบ 10 ใบ (ถัดไป: KS-166) · retro ทุกใบลง LESSONS.md</li>
+  <li>ลองให้ Gemini Pro ลงมือแทน Flash ในการ์ดถัดไป แล้วเทียบจำนวนรอบที่ถูกตีกลับกับ KS-160</li>
+</ul>
+<h3>ค้างจาก SPIKE-1 / KS-160 (เล็ก ทำเมื่อเจอซ้ำ)</h3>
+<ul>
+  <li>spike รับไฟล์แนบที่เป็นข้อความทั่วไป (.html, โค้ด)</li>
+  <li>เก็บประวัติ <code>questions.md</code> ทุกรอบ · Claude อ้างไฟล์ด้วย path เต็ม</li>
+  <li>สคริปต์ต่อ DB ที่อ่านรหัสจาก env แทนให้ AI เปิดไฟล์ <code>.secret</code></li>
+  <li>แก้คำสั่ง <code>move-to-board.ps1 -IssueKeys @(...)</code> ใน AGENTS.md ของ kong-command-center (ใช้ไม่ได้เมื่อส่งหลายใบ)</li>
+</ul>
+<h3>ถัดไป (มีตัวกระตุ้น)</h3>
+<div class="tbl"><table>
+  <tr><th>อะไร</th><th>ทำเมื่อ</th></tr>
+  <tr><td><code>/poc</code> ลองของบน <code>spike/*</code> ห้าม merge ผลเป็น note ให้ spike อ่านต่อ</td><td>มีการ์ด POC จริงใบแรก (แบบอยู่ใน <code>docs/spike-design.md</code> ข้อ 6)</td></tr>
+  <tr><td><code>/quick</code> งาน ≤2 ไฟล์ · spec สั้น → เทสต์ fail ก่อน → แก้ → review · Gate 2 จุดเดียว</td><td><code>/feature</code> หนักเกินกับงานเล็กจริง</td></tr>
+  <tr><td>Ops: runbook → dry-run → คนอนุมัติ → post-check → rollback</td><td>มีการ์ด deploy หรือ DB จริง</td></tr>
+  <tr><td>ให้ reviewer รันคำสั่งพิสูจน์เองใน worktree แยก</td><td>dispute ถูกใช้บ่อยจนเป็นภาระ</td></tr>
+</table></div>
+<h3>ภายหลัง</h3>
+<ul>
+  <li><code>pip install -e</code> + shim hook ที่ fail-closed (ตอนนี้ย้ายโฟลเดอร์แล้ว hook หายเงียบ)</li>
+  <li>เก็บหลักฐานใน <code>.git/arbiter/</code> · approve ต้องใช้รหัสที่คนเห็นเท่านั้น</li>
+  <li>CI ตรวจ trailer <code>Arbiter-Tree</code> เพื่อปิดช่อง <code>--no-verify</code></li>
+  <li>pre-push และ Claude hook กัน HBS DB / prod</li>
+  <li>pack <code>jira-ks</code> · ตรวจ transcript ของ Gemini อัตโนมัติว่าส่งคำพูดคุณตรงไหม</li>
+</ul>
+<h3>ไม่ทำ (จนกว่าจะมีเหตุ)</h3>
+<p><code>/greenfield</code> · migration · ให้ Claude คุมงานแทน Gemini · dashboard · ชุดทดสอบพฤติกรรมโมเดล</p>
+
+<h2>คำถามที่ยังค้าง</h2>
+<ul>
+  <li>ใครเขียน AC: คุณเขียนเอง หรือ Claude ร่างแล้วคุณอนุมัติที่ Gate 1 (ตอนนี้เป็นแบบหลัง)</li>
+  <li>จะให้คนอื่นในทีมใช้ด้วยหรือไม่ ถ้าใช่ คู่มือนี้คือจุดเริ่ม</li>
+</ul>
+
+<h2>ดูแลคู่มือนี้</h2>
+<p class="small">คู่มืออยู่ที่ <code>docs/</code> ของ repo arbiter: <code>assets/style.css</code> และ <code>assets/site.js</code> ใช้ร่วมกันทุกหน้า สารบัญและปุ่มก่อนหน้า / ถัดไปสร้างจากรายการใน <code>site.js</code>
+ทุกครั้งที่ขึ้นเวอร์ชัน ให้อัปเดตหน้านี้ ตัวเลขในหน้าแรก บรรทัด <code>v0.x.y</code> ใน nav ทุกหน้า และหน้าที่เกี่ยวข้องกับสิ่งที่เปลี่ยน</p>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · สถานะ ณ 9 พ.ย. 2026</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

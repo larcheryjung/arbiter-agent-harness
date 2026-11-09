@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แนวคิดและบทบาท · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 1 · เรียนตามลำดับ</div>
+<h1>แนวคิดและบทบาท</h1>
+<p class="lede">ก่อนดูขั้นตอน ต้องเข้าใจ 5 เรื่องนี้ก่อน: ใครทำอะไร, ข้อมูลไหลอย่างไร, script คุยกับ Gemini ด้วยภาษาอะไร,
+Gate ต้องดูอะไร และหลักฐานถูกผูกกับโค้ดอย่างไร</p>
+
+<h2 id="roles">1. ผู้เล่น 4 ตัว</h2>
+<div class="tbl"><table>
+  <tr><th>ใคร</th><th>ทำ</th><th>ห้ามทำ</th></tr>
+  <tr><td><span class="r r-human">คุณ</span></td><td>เล่าโจทย์ ตอบคำถาม อนุมัติ Gate 1 / Gate 2 ตัดสินเมื่องานติด commit <code>config.json</code></td><td>-</td></tr>
+  <tr><td><span class="r r-gemini">Gemini</span><br><span class="small muted">Antigravity IDE</span></td><td>รันคำสั่ง <code>arbiter</code> ทำตาม <code>NEXT:</code> เขียนงานเฉพาะไฟล์ใน <code>scope_allow</code> แสดงข้อความของ arbiter ตามตัวอักษร สร้างและขยับการ์ดบน Jira</td><td>เขียน prompt ให้ Claude · ตัดสินเองว่างานผ่าน · แก้ไฟล์ใน <code>.arbiter/</code> · อ่านซอร์ส arbiter · commit โค้ดเอง · <code>git checkout/restore/reset/stash/clean</code> · แต่งข้อมูลที่ไม่มีที่มา</td></tr>
+  <tr><td><span class="r r-machine">arbiter</span><br><span class="small muted">Python script</span></td><td>สร้าง prompt จาก template · รัน verify · ตรวจ scope · นับรอบ · อ่าน verdict ของ Claude · commit · ดึงการ์ดขึ้นบอร์ด</td><td>-</td></tr>
+  <tr><td><span class="r r-claude">Claude</span><br><span class="small muted"><code>claude -p</code></span></td><td>ร่าง spec และคำถาม · รีวิว diff · ชี้ขาดข้อโต้แย้ง · ถกแผนใน spike</td><td>แก้ไฟล์ใดๆ (มีแค่ Read / Grep / Glob และ Jira แบบอ่านอย่างเดียว)</td></tr>
+</table></div>
+
+<div class="diagram">
+<svg viewBox="0 0 760 400" role="img" aria-label="แผนภาพการไหลของข้อมูลระหว่างคุณ Gemini arbiter Claude และ repo">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/>
+    </marker>
+  </defs>
+  <g style="font-family:var(--sans);font-size:14px">
+    <rect x="40" y="24" width="160" height="58" rx="10" style="fill:var(--human-soft);stroke:var(--human)"/>
+    <text x="120" y="59" text-anchor="middle" style="fill:var(--human);font-weight:700">คุณ</text>
+    <rect x="40" y="170" width="160" height="70" rx="10" style="fill:var(--gemini-soft);stroke:var(--gemini)"/>
+    <text x="120" y="201" text-anchor="middle" style="fill:var(--gemini);font-weight:700">Gemini</text>
+    <text x="120" y="222" text-anchor="middle" style="fill:var(--muted);font-size:12px">คุมงาน + เขียนงาน</text>
+    <rect x="300" y="170" width="170" height="70" rx="10" style="fill:var(--machine-soft);stroke:var(--machine)"/>
+    <text x="385" y="201" text-anchor="middle" style="fill:var(--machine);font-weight:700">arbiter</text>
+    <text x="385" y="222" text-anchor="middle" style="fill:var(--muted);font-size:12px">กรรมการ (script)</text>
+    <rect x="570" y="170" width="160" height="70" rx="10" style="fill:var(--claude-soft);stroke:var(--claude)"/>
+    <text x="650" y="201" text-anchor="middle" style="fill:var(--claude);font-weight:700">Claude</text>
+    <text x="650" y="222" text-anchor="middle" style="fill:var(--muted);font-size:12px">อ่านอย่างเดียว</text>
+    <rect x="250" y="318" width="270" height="62" rx="10" style="fill:var(--surface-2);stroke:var(--line)"/>
+    <text x="385" y="344" text-anchor="middle" style="fill:var(--text);font-weight:700">repo + .arbiter/</text>
+    <text x="385" y="365" text-anchor="middle" style="fill:var(--muted);font-size:12px">spec · หลักฐาน · review · git hook</text>
+  </g>
+  <g style="stroke:var(--muted);stroke-width:1.6;fill:none">
+    <line x1="120" y1="84" x2="120" y2="166" marker-start="url(#ah)" marker-end="url(#ah)"/>
+    <line x1="202" y1="192" x2="296" y2="192" marker-end="url(#ah)"/>
+    <line x1="298" y1="220" x2="204" y2="220" marker-end="url(#ah)"/>
+    <line x1="472" y1="192" x2="566" y2="192" marker-end="url(#ah)"/>
+    <line x1="568" y1="220" x2="474" y2="220" marker-end="url(#ah)"/>
+    <polyline points="120,242 120,350 246,350" marker-end="url(#ah)"/>
+    <line x1="385" y1="242" x2="385" y2="314" marker-end="url(#ah)"/>
+    <polyline points="650,242 650,350 524,350" marker-end="url(#ah)" style="stroke-dasharray:5 4"/>
+  </g>
+  <g style="font-family:var(--sans);font-size:12px;fill:var(--text)">
+    <text x="130" y="130">แชท (▶ สิ่งที่คุณต้องทำ)</text>
+    <text x="249" y="184" text-anchor="middle">รหัส + คำพูดคุณ</text>
+    <text x="249" y="236" text-anchor="middle">STATUS / NEXT</text>
+    <text x="519" y="184" text-anchor="middle">prompt จาก template</text>
+    <text x="519" y="236" text-anchor="middle">SPEC / VERDICT</text>
+    <text x="128" y="298">เขียนงาน</text>
+    <text x="393" y="286">รันตรวจ · commit</text>
+    <text x="658" y="298">อ่านเอง</text>
+  </g>
+</svg>
+<div class="cap">เส้นสำคัญที่สุดคือเส้นที่ <b>ไม่มี</b>: Gemini ไม่มีเส้นตรงไปหา Claude ทุกอย่างผ่าน arbiter</div>
+</div>
+
+<h2 id="pointer">2. ส่ง "ตัวชี้" ไม่ส่ง "การตีความ"</h2>
+<p>นี่คือหลักที่ทำให้ Arbiter ต่างจาก harness เดิมมากที่สุด เวลา Gemini ต้องการให้ Claude ทำอะไร Gemini ส่งได้แค่ 2 อย่าง:</p>
+<ul>
+  <li><b>ตัวชี้</b> เช่นรหัสการ์ด <code>KS-160</code> หรือ path ของไฟล์แนบ</li>
+  <li><b>คำพูดของคุณตามตัวอักษร</b> ห้ามแก้ ห้ามเติม ห้ามสรุป</li>
+</ul>
+<p>arbiter ใส่สองอย่างนี้ลงใน template ที่อยู่ในโฟลเดอร์ <code>prompts/</code> แล้ว Claude ไปอ่านต้นทางเอง (การ์ดใน Jira, โค้ด, spec, diff)</p>
+<div class="grid g2">
+  <div class="callout bad"><span class="t">แบบเดิม (AeroHarness)</span>Builder เขียน <code>architect-prompt.txt</code>: "ช่วยรีวิวหน่อย ผมแก้ปัญหา X ด้วยวิธี Y ซึ่งถูกต้องแล้ว" ผู้ตรวจเห็นแค่สิ่งที่ Builder เลือกให้เห็น</div>
+  <div class="callout ok"><span class="t">แบบ Arbiter</span><code>arbiter review KS-160</code> → Claude อ่าน <code>spec.md</code> ที่คุณอนุมัติ + diff + ผลตรวจจากเครื่อง และ<b>ห้ามอ่านรายงานของ Builder</b></div>
+</div>
+<p>ข้อยกเว้นเดียวคือ <a href="stuck.html#dispute">dispute</a>: Builder ส่งข้ออ้างได้ 1 บรรทัด แต่ arbiter ติดป้ายว่า "ยังไม่ยืนยัน" และ Claude ต้องตัดสินจาก log ของคำสั่งที่ arbiter รันเอง</p>
+
+<h2 id="protocol">3. ภาษากลาง: STATUS, NEXT และ ▶</h2>
+<p>ทุกคำสั่ง <code>arbiter</code> จบด้วยรูปแบบเดียวกันเสมอ:</p>
+<div class="chat">
+<div class="msg out"><span class="who">ผลของ arbiter</span>SPEC KS-160 (.arbiter/tasks/KS-160/spec.md):
+
+# KS-160: Policy Status API ...
+...
+Claude ขั้นรีวิว: sonnet · medium (ตามที่การ์ดจาก spike แนะนำ) ...
+
+<span class="user-line">▶ สิ่งที่คุณต้องทำ: อ่าน spec แล้วพิมพ์ "อนุมัติ Gate 1" เพื่อให้เริ่มเขียนโค้ด หรือพิมพ์สิ่งที่ต้องการให้แก้ใน spec</span>
+
+STATUS: READY_FOR_GATE1
+NEXT: แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน ... approve KS-160 "&lt;ข้อความอนุมัติของผู้ใช้ ห้ามแก้&gt;"</div>
+</div>
+<div class="tbl"><table>
+  <tr><th>บรรทัด</th><th>เขียนถึงใคร</th><th>ความหมาย</th></tr>
+  <tr><td>เนื้อหาข้างบน</td><td>คุณ (ผ่าน Gemini)</td><td>Gemini ต้องแสดง<b>ตามตัวอักษร</b> ห้ามสรุป ห้ามแปล ห้ามอธิบายเพิ่ม</td></tr>
+  <tr><td><code>▶ สิ่งที่คุณต้องทำ</code></td><td>คุณ</td><td>บอกว่าต้องพิมพ์อะไรต่อ มีทุกหน้าที่รอคุณ</td></tr>
+  <tr><td><code>STATUS:</code></td><td>Gemini</td><td>ผลของคำสั่ง (ดูรายการทั้งหมดใน <a href="reference.html#status">อ้างอิง</a>)</td></tr>
+  <tr><td><code>NEXT:</code></td><td>Gemini</td><td>คำสั่งเดียวที่ Gemini ทำได้ต่อจากนี้</td></tr>
+</table></div>
+<div class="callout"><span class="t">ทำไมไม่ใช้ exit code?</span>
+Antigravity รันคำสั่งผ่าน <code>powershell -Command</code> ซึ่งทำให้ exit code ที่ไม่ใช่ 0 กลายเป็น 1 ทั้งหมด arbiter จึงบอกผลผ่านข้อความ <code>STATUS:</code> แทน
+และ workflow บอก Gemini ว่า "exit code ไม่ได้บอกผล"</div>
+
+<h2 id="gates">4. Gate 1 และ Gate 2</h2>
+<div class="grid g2">
+  <div class="card human">
+    <h3>🚪 Gate 1: อนุมัติ spec</h3>
+    <p class="small">เกิดก่อนเขียนงาน คุณอนุมัติ <b>สัญญา</b> ของงานนี้</p>
+    <ul class="small">
+      <li><b>Goal / Non-goals</b> ตรงกับที่ต้องการไหม</li>
+      <li><b>AC</b> ถ้าข้อนี้ผ่านหมด คุณยอมรับงานไหม</li>
+      <li><b>Approach</b> วิธีทำสมเหตุสมผลไหม (KS-160 พังที่ตรงนี้)</li>
+      <li><b>scope_allow</b> แคบพอไหม มีไฟล์แปลกไหม</li>
+      <li><b>verify</b> คำสั่งตรวจตรงจุดไหม</li>
+      <li><b>Claude ขั้นรีวิว</b> model ที่จะใช้ ถ้าไม่เห็นด้วยให้ทักในคำอนุมัติ</li>
+    </ul>
+    <p class="small">arbiter เก็บ <b>sha256 ของ spec</b> ไว้ ถ้า spec ถูกแก้หลังอนุมัติ ทุกขั้นถัดไปจะ BLOCKED</p>
+  </div>
+  <div class="card human">
+    <h3>🚪 Gate 2: อนุมัติผลงาน</h3>
+    <p class="small">เกิดหลังเครื่องตรวจผ่านและ Claude ให้ PASS แล้ว</p>
+    <ul class="small">
+      <li><b>ไฟล์ที่เปลี่ยน</b> ตรงกับที่คาดไหม</li>
+      <li><b>ผลตรวจจากเครื่อง</b> ทุกแถว exit 0</li>
+      <li><b>ยังไม่ได้ทดสอบ</b> ส่วนนี้สำคัญที่สุด คือสิ่งที่ไม่มีใครพิสูจน์</li>
+      <li><b>จุดที่ควรดู</b> 1–3 จุดที่ Claude แนะนำให้คนเปิดดูเอง</li>
+    </ul>
+    <p class="small">arbiter ผูกการอนุมัติกับ <b>tree</b> ของโค้ดที่ถูกรีวิว ถ้าโค้ดเปลี่ยนหลังจากนั้นจะขึ้น <span class="st warn">STALE</span></p>
+  </div>
+</div>
+<p>นอกจากสอง Gate นี้ <b>/spike</b> มีจุดอนุมัติของตัวเองอีก 2 จุด คือ "อนุมัติแผน" และ "อนุมัติการ์ด" (ดู <a href="spike.html">บทที่ 3</a>)</p>
+
+<h2 id="evidence">5. หลักฐาน: evidence.json และ tree</h2>
+<p>เวลา Gemini รัน <code>arbiter review</code> สิ่งแรกที่เกิดคือ arbiter ถ่าย "ภาพ" ของงานตอนนั้นเป็น <b>git tree hash</b> (ไม่รวม <code>.arbiter/</code>
+และเอกสารนอกการ์ด) แล้วรันการตรวจตามลำดับ:</p>
+<ol class="steps">
+  <li><b>scope</b> ไฟล์ที่เปลี่ยนต้องอยู่ใน <code>scope_allow</code> ทั้งหมด และต้องมีไฟล์เปลี่ยนอย่างน้อย 1 ไฟล์</li>
+  <li><b>verify</b> รันคำสั่งตรวจจาก <code>config.json</code> (เทสต์ชุดหลัก) และจาก spec ทุกคำสั่งต้อง exit 0</li>
+  <li><b>tree-stable</b> ถ่ายภาพซ้ำ ต้องตรงกับก่อนรัน verify (กันคำสั่งตรวจที่แอบแก้ไฟล์)</li>
+  <li><b>Claude รีวิว</b> เฉพาะเมื่อข้อ 1–3 ผ่าน ถ้าเครื่องตรวจไม่ผ่าน จะไม่เสียเงินเรียก Claude เลย</li>
+</ol>
+<p>ผลทั้งหมดถูกเขียนลง <code>evidence.json</code> พร้อม tree hash ตอน <code>arbiter commit</code> arbiter ถ่ายภาพอีกครั้ง ถ้าไม่ตรงกับที่รีวิว จะไม่ commit</p>
+
+<h2 id="scope">6. scope_allow และ docs_allow</h2>
+<div class="grid g2">
+  <div class="card"><h3><code>scope_allow</code> (อยู่ใน spec)</h3><p class="small">รายการ path/glob ที่การ์ดนี้แก้ได้ เขียนโดย Claude ตอนร่าง spec คุณอนุมัติที่ Gate 1 ไฟล์นอกนี้ทำให้ gate ไม่ผ่าน และ git hook ไม่ให้ commit</p></div>
+  <div class="card"><h3><code>docs_allow</code> (อยู่ใน config)</h3><p class="small">glob ของเอกสารที่ <b>commit เองได้โดยไม่ต้องมีการ์ด</b> เช่น <code>kong-workspace/**</code>, <code>*.md</code> ถ้าเอกสารเหล่านี้เปลี่ยนระหว่างทำการ์ด จะไม่ถูกนับเป็นงานของการ์ด และไม่ทำให้ STALE</p></div>
+</div>
+<div class="callout warn"><span class="t">กฎที่เพิ่มใน v0.3.2</span>
+ถ้าไฟล์ตรงกับทั้งสองอย่าง <b>scope_allow ชนะ</b> เช่นการ์ด KS-160 ที่ผลงานคือ OpenAPI spec ใน <code>kong-workspace/notes/</code>
+ไฟล์นั้นเป็นงานของการ์ด ต้องผ่านรีวิว ส่วน <code>AGENTS.md</code> / <code>CLAUDE.md</code> / <code>GEMINI.md</code> ไม่นับเป็นเอกสารเสมอ</div>
+
+<h2 id="keys">7. รหัสงาน 3 แบบ</h2>
+<div class="tbl"><table>
+  <tr><th>รหัส</th><th>มาจาก</th><th>Claude อ่านโจทย์จาก</th><th>Jira</th></tr>
+  <tr><td><code>KS-123</code></td><td>การ์ดใน Jira project KS</td><td>Jira (ต้องมีหลักฐานว่าอ่านการ์ดนั้นสำเร็จ) + แผนของ spike ถ้าการ์ดมาจาก spike</td><td>ดึงขึ้นบอร์ดอัตโนมัติ · ขยับหลัง commit</td></tr>
+  <tr><td><code>LOCAL-1</code></td><td><code>/feature &lt;โจทย์&gt;</code></td><td><code>intent.md</code> = คำพูดของคุณตามตัวอักษร</td><td>ไม่แตะ Jira เลย</td></tr>
+  <tr><td><code>SPIKE-1</code></td><td><code>/spike &lt;โจทย์&gt;</code></td><td><code>intent.md</code> + ไฟล์ใน <code>inputs/</code></td><td>ได้การ์ด KS หลายใบตอนจบ</td></tr>
+</table></div>
+
+<h2 id="model">8. Claude ใช้ model อะไร</h2>
+<div class="tbl"><table>
+  <tr><th>ขั้น</th><th>model</th></tr>
+  <tr><td>ร่าง spec · ตอบคำถาม · spike</td><td><b>Opus · High เสมอ</b> เว้นแต่คุณสั่งเองตอนเริ่มการ์ด เช่น "/feature KS-12 ใช้ sonnet medium"</td></tr>
+  <tr><td>รีวิว · dispute</td><td>แจ้งในหน้า Gate 1 ว่าจะใช้อะไรและมาจากไหน: ที่คุณสั่ง → ที่การ์ดจาก spike แนะนำ → Opus · High <b>ถ้าไม่ทักในคำอนุมัติ ใช้ตามนั้น</b> ทักได้ เช่น "อนุมัติ Gate 1 ใช้ opus high"</td></tr>
+</table></div>
+<p class="small muted">เหตุผล: งานที่แพงที่สุดใน KS-160 เกิดจาก spec ที่ผิดตั้งแต่ต้น จึงไม่ประหยัดที่ขั้น spec ส่วนรีวิวที่ใช้ sonnet ใน KS-160 ราคาครึ่งเดียว ($0.56 เทียบ $1.11) model ที่ใช้จริงทุกครั้งอยู่ใน <code>sessions.jsonl</code></p>
+
+<h2 id="lang">9. ภาษา</h2>
+<p>spec, คำถาม, หน้า Gate 2 และผลรีวิวจะใช้ภาษาเดียวกับ<b>ข้อความล่าสุดที่คุณพิมพ์</b>ในการ์ดนั้น ถ้ายังไม่ได้พิมพ์อะไร ใช้ภาษาไทย (ค่า <code>language</code> ใน config)</p>
+
+<h2>ลองตอบ</h2>
+<details class="q"><summary>Gemini อยากให้ Claude ดูไฟล์ mockup ที่เพิ่งได้มา ควรทำอย่างไร</summary>
+ส่งเป็น<b>ตัวชี้</b> ใน spike ใช้ <code>spike answer ... --file &lt;path&gt;</code> ใน /feature ให้คุณบอกผ่าน <code>answer</code> (เช่น "ดู mockup ที่ path นี้ประกอบ") ห้าม Gemini สรุปเนื้อหา mockup แล้วส่งเป็นข้อความเอง</details>
+<details class="q"><summary>Gemini แก้ไฟล์งานหลัง Claude ให้ PASS แล้ว จะเกิดอะไรตอน commit</summary>
+tree ไม่ตรงกับที่รีวิว arbiter ตอบ <span class="st warn">STALE</span> พร้อมรายชื่อไฟล์ และจะไม่ commit ต้อง review ใหม่</details>
+<details class="q"><summary>ทำไม arbiter ไม่เรียก Claude ถ้า verify ไม่ผ่าน</summary>
+เพราะงานที่เครื่องบอกว่าพังแล้วไม่จำเป็นต้องให้ AI อ่าน ประหยัดเงินและเวลา และทำให้ Claude ได้รีวิวเฉพาะงานที่ผ่านเกณฑ์ขั้นต่ำแล้ว</details>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 1</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

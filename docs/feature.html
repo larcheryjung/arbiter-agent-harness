@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>/feature ทีละขั้น · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 2 · เรียนตามลำดับ</div>
+<h1>/feature ทีละขั้น</h1>
+<p class="lede">ตามการ์ดหนึ่งใบตั้งแต่พิมพ์ <code>/feature KS-xx</code> จนการ์ดขึ้น Done ในหน้านี้ใช้ KS-160 (OpenAPI spec ของ Policy Status API) เป็นตัวอย่าง
+คุณพิมพ์จริงแค่ 3–4 ครั้ง ที่เหลือ Gemini กับ arbiter คุยกันเอง</p>
+
+<div class="callout"><span class="t">ก่อนเริ่ม</span>
+<ul style="margin:4px 0 0">
+  <li>ใช้กับการ์ดที่ <b>ขอบเขตชัดแล้ว</b> ถ้ายังไม่รู้ว่าต้องทำอะไรบ้าง ให้เริ่มที่ <a href="spike.html">/spike</a> ก่อน</li>
+  <li>เปิดแชท Gemini ใหม่ทุกครั้งที่อัปเดต arbiter เพื่อให้โหลด workflow ฉบับล่าสุด</li>
+  <li>ทำการ์ดทีละใบ arbiter จำการ์ดที่กำลังทำไว้ในไฟล์ <code>.arbiter/ACTIVE</code></li>
+</ul></div>
+
+<h2 id="lane">ภาพรวม: ใครทำอะไร ตามลำดับ</h2>
+<div class="lane"><table>
+  <tr><th>#</th><th class="h-human">คุณ</th><th class="h-gemini">Gemini</th><th class="h-machine">arbiter</th><th class="h-claude">Claude</th></tr>
+  <tr><td class="n">1</td><td class="c-human">พิมพ์ <code>/feature KS-160</code></td><td class="c-gemini">รัน <code>arbiter spec KS-160</code></td><td class="c-machine">ตั้งการ์ดเป็น ACTIVE · ดึงการ์ดขึ้นบอร์ด Jira · สร้าง prompt จาก template</td><td class="c-claude">อ่านการ์ดจาก Jira + แผนของ spike (ถ้ามี) + โค้ด แล้วร่าง spec และคำถาม</td></tr>
+  <tr><td class="n">2</td><td class="c-human">ตอบคำถาม (ข้อที่ไม่ตอบใช้ค่า default)</td><td class="c-gemini">แสดงคำถามตามตัวอักษร · ส่งคำตอบด้วย <code>answer</code></td><td class="c-machine">ตรวจว่า Claude อ่านการ์ด Jira สำเร็จจริง · บันทึกคำตอบลง <code>answers.md</code></td><td class="c-claude">session เดิม (resume) ปรับ spec ตามคำตอบ</td></tr>
+  <tr><td class="n">3</td><td class="c-human">อ่าน spec แล้วพิมพ์ <b>อนุมัติ Gate 1</b></td><td class="c-gemini">รัน <code>approve</code> ด้วยข้อความของคุณ</td><td class="c-machine">เก็บ sha256 ของ spec + model ที่ใช้รีวิว</td><td></td></tr>
+  <tr><td class="n">4</td><td></td><td class="c-gemini">เขียนงานเฉพาะไฟล์ใน <code>scope_allow</code> แล้วรัน <code>review</code></td><td class="c-machine">scope → verify → tree-stable → <code>evidence.json</code></td><td></td></tr>
+  <tr><td class="n">5</td><td></td><td class="c-gemini">ถ้า FAIL: แก้แล้ว review ใหม่ (หรือ <a href="stuck.html#dispute">dispute</a>)</td><td class="c-machine">นับรอบ · ครบ 2 รอบตีกลับ หรือ 6 รอบ gate → ESCALATE</td><td class="c-claude">อ่าน spec + diff + evidence แล้วให้ PASS / FAIL / SPEC_ISSUE</td></tr>
+  <tr><td class="n">6</td><td class="c-human">อ่านหน้า Gate 2 แล้วพิมพ์ <b>อนุมัติ Gate 2</b></td><td class="c-gemini">รัน <code>commit</code> ด้วยข้อความของคุณ</td><td class="c-machine">ตรวจซ้ำทุกอย่าง แล้ว commit พร้อม trailer</td><td></td></tr>
+  <tr><td class="n">7</td><td></td><td class="c-gemini">ขยับการ์ดบน Jira: Story → UAT / QA, Task → Done</td><td></td><td></td></tr>
+</table></div>
+
+<h2 id="steps">ทีละขั้นแบบละเอียด</h2>
+<ol class="steps">
+  <li><b>เริ่มการ์ด: <code>/feature KS-160</code></b>
+    <p>Gemini รัน <code>arbiter spec KS-160</code> ถ้าการ์ดมี spec อยู่แล้วจะรัน <code>status</code> แทน แล้วทำต่อจากขั้นที่ค้าง arbiter จะ:</p>
+    <ul>
+      <li>ดึงการ์ดออกจาก Backlog ขึ้นบอร์ด 5335 (การ์ดที่อยู่ใน Backlog แล้วปิด จะหายจากบอร์ด) และแจ้งผลในข้อความ</li>
+      <li>ถ้าคุณสั่ง model เอง เช่น "/feature KS-160 ใช้ sonnet medium" จะเก็บไว้ใน <code>model.json</code> และใช้ทุกขั้นของการ์ดนี้</li>
+      <li>เรียก Claude ให้อ่านการ์ดเอง ถ้าการ์ดมาจาก spike Claude จะอ่าน <code>solution.md</code> และการ์ดใน <code>cards.json</code> ประกอบด้วย</li>
+    </ul>
+    <div class="callout warn"><span class="t">กันการเดา</span>ถ้า Claude เรียก <code>jira_get_issue</code> ของการ์ดนั้นไม่สำเร็จ (เช่น Jira MCP ยังไม่พร้อม) arbiter จะไม่รับ spec และตอบ <span class="st bad">ERROR</span> แทนการปล่อยให้ Claude เดา</div>
+  </li>
+  <li><b>ตอบคำถาม: <span class="st wait">NEEDS_ANSWERS</span></b>
+    <p>Claude ถามได้ 0–5 ข้อ เฉพาะเรื่องที่หาจากโค้ดไม่ได้ (business rule, ขอบเขต, การตัดสินใจที่ย้อนยาก) ทุกข้อมีตัวเลือกและ <code>[default: …]</code></p>
+    <ul>
+      <li>ตอบเฉพาะข้อที่ไม่เห็นด้วยกับ default ก็ได้ ข้อที่ไม่ตอบใช้ default</li>
+      <li>ถามกลับหรือแย้งได้ ทุกข้อความไปถึง Claude ตามตัวอักษร</li>
+      <li>คำตอบถูกเก็บใน <code>answers.md</code> และ Claude ต้องทำตาม</li>
+    </ul>
+  </li>
+  <li><b>อ่าน spec: <span class="st wait">READY_FOR_GATE1</span></b>
+    <p>spec ยาวไม่เกินประมาณ 40 บรรทัด มี Goal, Non-goals, AC (Given/When/Then), Approach, Assumptions, Risks และปิดท้ายด้วยบล็อกที่เครื่องอ่าน:</p>
+<pre><code>```arbiter
+scope_allow:
+  - kong-workspace/notes/policy-status-api.openapi.yaml
+  - kong-workspace/payloads/*.json
+verify:
+  - npx --yes @redocly/cli@1 lint --extends=recommended-strict kong-workspace/notes/policy-status-api.openapi.yaml
+```</code></pre>
+    <p>ท้ายหน้ามีบรรทัด <code>Claude ขั้นรีวิว: … (ที่มา)</code> ใช้ checklist ใน <a href="concepts.html#gates">บทที่ 1</a> แล้วเลือก:</p>
+    <ul>
+      <li><code>อนุมัติ Gate 1</code> ถ้าจะเปลี่ยน model รีวิว ให้ต่อท้ายได้ เช่น <code>อนุมัติ Gate 1 ใช้ opus high</code></li>
+      <li>หรือพิมพ์สิ่งที่อยากให้แก้ Gemini จะส่งด้วย <code>answer</code> แล้ว Claude แก้ spec</li>
+    </ul>
+  </li>
+  <li><b>Gemini เขียนงาน: <span class="st">APPROVED_GATE1</span></b>
+    <p>arbiter แสดงรายการ <code>scope_allow</code> อีกครั้ง Gemini แก้ได้เฉพาะไฟล์เหล่านั้น ถ้าจำเป็นต้องแก้นอก scope ต้องหยุดถามคุณ ระหว่างนี้คุณไม่ต้องทำอะไร</p>
+  </li>
+  <li><b>เครื่องตรวจ + Claude รีวิว: <code>arbiter review</code></b>
+    <p>ลำดับการตรวจอยู่ใน <a href="concepts.html#evidence">บทที่ 1 ข้อ 5</a> ผลที่เป็นไปได้:</p>
+    <div class="tbl"><table>
+      <tr><th>ผล</th><th>หมายถึง</th><th>เกิดอะไรต่อ</th></tr>
+      <tr><td><span class="st bad">FAIL</span> (gate)</td><td>scope / verify / tree-stable ไม่ผ่าน</td><td>Gemini แก้เอง ไม่เรียก Claude</td></tr>
+      <tr><td><span class="st bad">FAIL</span> (review)</td><td>Claude เจอ BLOCKER หรือ MAJOR</td><td>Gemini แก้ตาม findings หรือ <a href="stuck.html#dispute">dispute</a> ถ้า finding ขัดกับความจริงของเครื่องมือ</td></tr>
+      <tr><td><span class="st warn">SPEC_ISSUE</span></td><td>ปัญหาอยู่ที่ spec</td><td>รอคุณตัดสิน (<a href="stuck.html#spec-issue">ดูบทที่ 4</a>)</td></tr>
+      <tr><td><span class="st warn">ESCALATE</span></td><td>ตีกลับครบ 2 รอบ หรือ gate ครบ 6 รอบ</td><td>รอคุณ: ทำต่อ / แก้ spec / พักการ์ด</td></tr>
+      <tr><td><span class="st warn">BLOCKED</span></td><td>ไม่มีไฟล์ที่เปลี่ยนตาม scope</td><td>Gemini หยุด ห้ามรันซ้ำเอง</td></tr>
+      <tr><td><span class="st ok">READY_FOR_GATE2</span></td><td>ผ่านทั้งเครื่องและ Claude</td><td>รอคุณอนุมัติ</td></tr>
+    </table></div>
+    <p>ตั้งแต่รอบที่ 2 Claude ตรวจเฉพาะ<b>ข้อเดิมว่าแก้แล้วหรือยัง และมีอะไรพังเพิ่มหรือไม่</b> ห้ามเปิดประเด็นใหม่ ยกเว้น BLOCKER และต้องยึดคำตัดสินของคุณใน <code>decisions.md</code></p>
+  </li>
+  <li><b>Gate 2: <span class="st ok">READY_FOR_GATE2</span></b>
+    <p>หน้านี้ arbiter สร้างจากหลักฐาน ไม่ใช่ Gemini เขียน มีไฟล์ที่เปลี่ยน, ตารางผลตรวจจากเครื่อง, ผลรีวิว, สิ่งที่ยังไม่ได้ทดสอบ และจุดที่ควรเปิดดูเอง</p>
+    <ul>
+      <li>พิมพ์ <code>อนุมัติ Gate 2</code> เพื่อ commit</li>
+      <li>หรือพิมพ์สิ่งที่ต้องแก้ Gemini จะแก้แล้ว review ใหม่</li>
+    </ul>
+  </li>
+  <li><b>commit: <span class="st ok">COMMITTED</span></b>
+    <p><code>arbiter commit</code> ไม่เชื่อไฟล์ JSON เฉยๆ แต่ตรวจซ้ำเอง:</p>
+    <ul>
+      <li>evidence ผ่านทั้ง gate และรีวิว</li>
+      <li>spec ยังตรงกับที่อนุมัติ Gate 1</li>
+      <li>โค้ดไม่เปลี่ยนจากที่รีวิว ถ้าเปลี่ยนจะขึ้น <span class="st warn">STALE</span> พร้อมรายชื่อไฟล์</li>
+      <li>ไม่มีไฟล์นอก scope</li>
+      <li>สิ่งที่ stage อยู่ตรงกับที่รีวิวทุกไบต์</li>
+    </ul>
+    <p>จากนั้น commit โดยมี trailer <code>Arbiter-Card</code>, <code>Arbiter-Tree</code>, <code>Arbiter-Gate2</code> ส่วนเอกสารนอกการ์ดที่เปลี่ยนระหว่างทางจะไม่ถูกรวมใน commit นี้ และถูกแจ้งไว้ให้ commit แยก</p>
+  </li>
+  <li><b>ขยับการ์ดบน Jira</b>
+    <p>Story → <b>UAT / QA</b> (รอ BA ทดสอบ) · Task → <b>Done</b> · การ์ด LOCAL ไม่แตะ Jira</p>
+  </li>
+</ol>
+
+<h2 id="chat">ตัวอย่างบทสนทนา (ย่อ)</h2>
+<div class="chat">
+  <div class="msg you"><span class="who">คุณ</span>/feature KS-160</div>
+  <div class="msg gem"><span class="who">Gemini</span>กำลังรัน arbiter spec KS-160 …</div>
+  <div class="msg out"><span class="who">Gemini แสดงผลของ arbiter ตามตัวอักษร</span>(ดึงการ์ด KS-160 ขึ้นบอร์ด 5335 แล้ว)
+QUESTIONS (KS-160):
+1. benefits ใน contract ควรเป็นแบบไหน: (a) key ตายตัว 21 ตัว … [default: a]
+2. …
+
+<span class="user-line">▶ สิ่งที่คุณต้องทำ: ตอบคำถามข้างบนในแชทนี้ ข้อที่ไม่ตอบจะใช้ค่า [default] ของข้อนั้น</span></div>
+  <div class="msg you"><span class="who">คุณ</span>ตาม default ไป · security ผมมี Keycloak เข้า Realm ได้ไหม</div>
+  <div class="msg out"><span class="who">ผลของ arbiter</span>SPEC KS-160 … (spec ทั้งหมด)
+
+Claude ขั้นรีวิว: sonnet · medium (ตามที่การ์ดจาก spike แนะนำ) …
+
+<span class="user-line">▶ สิ่งที่คุณต้องทำ: อ่าน spec แล้วพิมพ์ "อนุมัติ Gate 1" …</span></div>
+  <div class="msg you"><span class="who">คุณ</span>อนุมัติ Gate 1</div>
+  <div class="msg gem"><span class="who">Gemini</span>(เขียนงาน รัน lint รัน arbiter review … อาจวนหลายรอบโดยคุณไม่ต้องทำอะไร)</div>
+  <div class="msg out"><span class="who">ผลของ arbiter</span># Gate 2: KS-160 …
+## ไฟล์ที่เปลี่ยน (6) …
+## ผลตรวจจากเครื่อง  | scope | 0 | spec-1 | 0 | …
+## Review รอบ 4: PASS …
+
+<span class="user-line">▶ สิ่งที่คุณต้องทำ: ตรวจผลข้างบน แล้วพิมพ์ "อนุมัติ Gate 2" เพื่อ commit หรือพิมพ์สิ่งที่ต้องแก้</span></div>
+  <div class="msg you"><span class="who">คุณ</span>อนุมัติ Gate 2</div>
+</div>
+
+<h2 id="midway">แก้ spec ระหว่างทาง</h2>
+<p>ถ้าเขียนงานไปแล้วเพิ่งรู้ว่า spec ต้องเปลี่ยน (ต้องการเพิ่ม AC, Approach ใช้ไม่ได้) ให้บอก Gemini เช่น <code>แก้ spec: ให้ examples เป็น inline</code>
+Gemini จะส่งด้วย <code>answer</code> ซึ่ง:</p>
+<ul>
+  <li>ยกเลิก Gate 1 เดิมทันที</li>
+  <li>Claude แก้ spec แล้วคุณต้องอนุมัติ Gate 1 ใหม่</li>
+  <li>งบรอบตีกลับและรอบ gate นับใหม่ เพราะถือเป็นสัญญาฉบับใหม่</li>
+  <li>งานที่เขียนไปแล้วยังอยู่ ไม่ต้องเริ่มใหม่</li>
+</ul>
+
+<h2 id="local">งานที่ไม่มีการ์ด Jira: LOCAL-n</h2>
+<p>พิมพ์ <code>/feature เพิ่ม endpoint ตรวจสถานะคิว</code> (เล่าโจทย์แทนรหัสการ์ด) arbiter ตั้งรหัส <code>LOCAL-1</code>, <code>LOCAL-2</code>, … ให้
+และเก็บคำพูดของคุณไว้ใน <code>intent.md</code> ตามตัวอักษร ขั้นตอนอื่นเหมือนการ์ด KS ทุกอย่าง ต่างกันแค่:</p>
+<ul>
+  <li>Claude ไม่มีเครื่องมือ Jira เลย อ่านโจทย์จาก <code>intent.md</code></li>
+  <li>ไม่ดึงการ์ดขึ้นบอร์ด และหลัง commit ห้ามแตะ Jira</li>
+</ul>
+
+<h2 id="tips">เคล็ดลับ</h2>
+<ul>
+  <li><b>คำถามที่ช่วยได้มากที่สุดตอน Gate 1:</b> "ถ้าตอน Gate 2 คุณจะตีงานนี้กลับ น่าจะเป็นเพราะอะไร" คำตอบกลายเป็น AC ได้ทันที (Claude จะถามเองถ้าการ์ดไม่มี AC)</li>
+  <li><b>อ่าน "ยังไม่ได้ทดสอบ" ให้ดีที่สุด</b> ตอน Gate 2 นั่นคือสิ่งที่ไม่มีใครพิสูจน์ ไม่ใช่ส่วนที่พิสูจน์แล้ว</li>
+  <li><b>อย่าให้ Gemini commit เอง</b> ถ้าเห็น Gemini รัน <code>git commit</code> หรือ <code>git checkout</code> ให้หยุดมันทันที</li>
+  <li><b>หลังจบการ์ด</b> เปิด Claude Code แล้วพิมพ์ <code>retro KS-160</code> ให้อ่าน transcript ของ Gemini กับโฟลเดอร์การ์ด แล้วจดบทเรียนลง <code>LESSONS.md</code></li>
+</ul>
+
+<h2>ลองตอบ</h2>
+<details class="q"><summary>Gemini ตอบว่า "เทสต์ผ่านหมดแล้ว พร้อม commit" แต่ยังไม่เห็นหน้า Gate 2 ควรทำอย่างไร</summary>
+อย่าเชื่อ ผลผ่านมาจาก <code>arbiter review</code> เท่านั้น บอกให้ Gemini รัน <code>arbiter review KS-xx</code> และรอหน้า <span class="st ok">READY_FOR_GATE2</span> ที่ arbiter สร้าง</details>
+<details class="q"><summary>อนุมัติ Gate 1 ไปแล้ว แต่อยากให้รีวิวใช้ Opus แทน Sonnet ที่การ์ดแนะนำ</summary>
+ทำได้สองทาง: พิมพ์ "แก้ spec: …" เพื่อเปิด Gate 1 ใหม่ แล้วอนุมัติพร้อมบอก model (<code>อนุมัติ Gate 1 ใช้ opus high</code>) หรือครั้งหน้าบอกตั้งแต่คำอนุมัติแรก</details>
+<details class="q"><summary>เอกสารใน kong-workspace ที่ไม่ได้อยู่ใน scope เปลี่ยนระหว่างทำการ์ด จะเกิดอะไร</summary>
+ไม่นับเป็นงานของการ์ด ไม่ทำให้ STALE และไม่ถูกรวมใน commit ของการ์ด หน้า COMMITTED จะบอกรายชื่อไว้ให้ commit แยก (ไม่ต้องใช้ <code>--no-verify</code>)</details>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 2</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

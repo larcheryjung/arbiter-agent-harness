@@ -2,7 +2,7 @@
 
 Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แทน AeroHarness: Gemini (Antigravity) เป็นคนลงมือและเรียก Claude อัตโนมัติ, Claude (`claude -p` อ่านอย่างเดียว) ร่าง spec และ review, script `arbiter` ตัดสินผ่าน/ไม่ผ่านจากหลักฐาน, คนกดแค่ Gate 1 และ Gate 2
 
-- คู่มือฉบับเต็มสำหรับคน: [docs/index.html](docs/index.html) (สถานะ, วิธีใช้, ทำงานอย่างไร, Roadmap, บทเรียน, อ้างอิง)
+- คู่มือสอนใช้งานฉบับเต็ม (หลายหน้า): [docs/index.html](docs/index.html) → แนวคิด, /feature, /spike, เมื่องานติด, อะไรบังคับจริง, กรณีศึกษา, อ้างอิง, [สถานะและ Roadmap](docs/roadmap.html)
 - ทิศทางและการตัดสินใจ: [DIRECTION.md](DIRECTION.md) · บทเรียนจากงานจริง: [LESSONS.md](LESSONS.md) · แบบ `/spike` และ `/poc`: [docs/spike-design.md](docs/spike-design.md)
 
 ## สถานะ (2026-11-09)

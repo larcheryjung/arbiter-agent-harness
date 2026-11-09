@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>/spike ทีละขั้น · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 3 · เรียนตามลำดับ</div>
+<h1>/spike ทีละขั้น</h1>
+<p class="lede"><code>/spike</code> ใช้กลั่น requirement ก้อนใหญ่ที่ยังไม่ชัด ให้กลายเป็น <b>แผนที่อนุมัติแล้ว</b> และ <b>รายการการ์ดบน Jira</b> ที่แต่ละใบเข้า <code>/feature</code> ได้เลย
+ระหว่าง spike ไม่มีการเขียนโค้ดและไม่แตะไฟล์ใน repo</p>
+
+<h2>ใช้ /spike หรือ /feature</h2>
+<div class="tbl"><table>
+  <tr><th>สถานการณ์</th><th>ใช้</th></tr>
+  <tr><td>"หน้าบ้านอยากได้ API ดูสถานะกรมธรรม์ ช่วยคิดว่าควรเป็นยังไง มีปัญหาอะไรไหม"</td><td><b>/spike</b> ยังต้องคิด ถก และเลือกทาง</td></tr>
+  <tr><td>"ออกแบบสถาปัตยกรรมของ service ใหม่"</td><td><b>/spike</b></td></tr>
+  <tr><td>การ์ดที่มี AC ชัด เช่น "เขียน OpenAPI spec ตาม solution ที่อนุมัติแล้ว"</td><td><b>/feature</b></td></tr>
+  <tr><td>แก้ bug ที่รู้สาเหตุแล้ว</td><td><b>/feature</b></td></tr>
+</table></div>
+<p class="small muted">หมายเหตุ: <code>/spike</code> ของ Arbiter <b>ไม่ใช่</b> POC การลองของจริงเพื่อตอบคำถามเทคนิคจะเป็น track <code>/poc</code> แยก (ยังไม่ได้สร้าง)</p>
+
+<h2>Flow ทั้งหมด</h2>
+<div class="lane"><table>
+  <tr><th>#</th><th class="h-human">คุณ</th><th class="h-gemini">Gemini</th><th class="h-machine">arbiter</th><th class="h-claude">Claude</th></tr>
+  <tr><td class="n">1</td><td class="c-human"><code>/spike &lt;เล่าโจทย์&gt;</code> + แนบไฟล์ (หรือ <code>/spike KS-xx</code>)</td><td class="c-gemini"><code>spike new --text "…" --file …</code> คำพูดตามตัวอักษร</td><td class="c-machine">ตั้งรหัส SPIKE-n · คัดลอกไฟล์แนบลง <code>inputs/</code> (แปลง .docx/.xlsx เป็นข้อความ)</td><td class="c-claude">อ่าน requirement + ไฟล์แนบ + โค้ดจริง + repo อื่นใน <code>read_dirs</code> + Jira KS</td></tr>
+  <tr><td class="n">2</td><td class="c-human">ตอบ ถามกลับ หรือแย้ง (กี่รอบก็ได้)</td><td class="c-gemini"><code>spike answer</code> ทุกข้อความ</td><td class="c-machine">resume session เดิม · นับรอบและค่า Claude สะสม</td><td class="c-claude">REPLY ตอบคุณ + ปรับ <code>solution.md</code> + คำถามใหม่</td></tr>
+  <tr><td class="n">3</td><td class="c-human">🚪 <b>อนุมัติแผน</b></td><td class="c-gemini"><code>spike approve</code></td><td class="c-machine">เก็บ sha256 ของ solution</td><td class="c-claude">ซอยการ์ดอัตโนมัติ → <code>cards.json</code></td></tr>
+  <tr><td class="n">4</td><td></td><td></td><td class="c-machine">ตรวจการ์ดด้วยกฎ ไม่ผ่านให้ Claude แก้ 1 รอบอัตโนมัติ</td><td class="c-claude">แก้การ์ดตามข้อผิด</td></tr>
+  <tr><td class="n">5</td><td class="c-human">🚪 <b>อนุมัติการ์ด</b></td><td class="c-gemini"><code>spike approve</code> → สร้างการ์ดใน KS ตาม <code>cards.md</code> ตามตัวอักษร</td><td></td><td></td></tr>
+  <tr><td class="n">6</td><td></td><td class="c-gemini"><code>spike link SPIKE-1 "C1=KS-160 C2=KS-166"</code></td><td class="c-machine">บันทึก <code>jira-map.json</code> · commit โฟลเดอร์ spike · <b>ดึงการ์ดขึ้นบอร์ด</b></td><td></td></tr>
+  <tr><td class="n">7</td><td class="c-human"><code>/feature KS-160</code> (ใบที่ไม่ต้องรอใบอื่น)</td><td colspan="3" class="small muted">การ์ดที่มาจาก spike จะถูกชี้ไปที่แผนที่อนุมัติแล้ว Claude อ่านเอง ไม่มีใครเล่าต่อ</td></tr>
+</table></div>
+
+<h2>ขั้นที่ 1: เริ่ม spike</h2>
+<p>เล่าโจทย์แบบที่คุณคิด ไม่ต้องเกลาให้สวย Gemini ห้ามแก้คำของคุณ และ Claude จะสรุป "ความเข้าใจโจทย์" กลับมาให้ตรวจเอง</p>
+<div class="callout ok"><span class="t">เพิ่มข้อมูล ไม่ใช่เกลาคำ</span>
+สิ่งที่ทำให้ spike ดีขึ้นจริงคือ <b>ไฟล์แนบ</b> เช่นโครงสร้าง view, เอกสาร requirement, ตัวอย่างข้อมูล ส่วนการให้ AI อื่นช่วย "enhance prompt" ก่อน
+จะทำให้การตีความของ AI ตัวนั้นติดไปกับโจทย์ และอาจทำให้ประเด็นสำคัญหายไป (ดู <a href="cases.html#spike1">SPIKE-1</a>)</div>
+<div class="tbl"><table>
+  <tr><th>ไฟล์แนบ</th><th>ผล</th></tr>
+  <tr><td>.md .txt .csv .json .yml .yaml .xml .sql</td><td>คัดลอกลง <code>inputs/</code> Claude อ่านตรง</td></tr>
+  <tr><td>.pdf และรูป (.png .jpg .gif .webp)</td><td>คัดลอกลง <code>inputs/</code> Claude อ่านได้ด้วยเครื่องมือ Read</td></tr>
+  <tr><td>.docx, .xlsx</td><td>แปลงเป็นข้อความไว้คู่กัน (<code>arbiter_extract.py</code>)</td></tr>
+  <tr><td>.html, ไฟล์โค้ด และชนิดอื่น</td><td>ยังไม่รับ (v0.3.3) ไฟล์ที่อยู่ใน repo หรือใน <code>read_dirs</code> อยู่แล้ว Claude อ่านเองได้ ให้บอก path ในข้อความแทนการแนบ</td></tr>
+</table></div>
+
+<h2>ขั้นที่ 2: คุยหลายรอบ</h2>
+<p>ทุกรอบ Claude ตอบเป็น 3 ส่วน:</p>
+<ul>
+  <li><b>REPLY</b> ตอบสิ่งที่คุณพูดล่าสุดตรงๆ</li>
+  <li><b>SOLUTION</b> แผนฉบับล่าสุดใน <code>solution.md</code>: ความเข้าใจโจทย์, ข้อแย้งและข้อกังวล, ทางเลือก 2–3 แบบ, ที่แนะนำ, ผลกระทบ, ความเสี่ยง, สมมติฐาน</li>
+  <li><b>QUESTIONS</b> คำถามพร้อม <code>[default]</code></li>
+</ul>
+<ul>
+  <li>ทุกหน้าจะบอกว่า <code>(spike SPIKE-1 · คุยไป N รอบ · ค่า Claude สะสม $X)</code></li>
+  <li>เกิน <code>budget_usd</code> (ค่าตั้งต้น $15) จะขึ้นคำเตือน แต่ไม่หยุดงาน</li>
+  <li>arbiter ต่อ session เดิมไว้ได้ 6 รอบ หลังจากนั้นจะเปิด session ใหม่ที่อ่านจากไฟล์ ซึ่งอาจลืมรายละเอียดที่คุยในแชทแต่ไม่ได้ลงไฟล์</li>
+  <li>ถ้าแผนเปลี่ยนหลังอนุมัติ การอนุมัติและรายการการ์ดเดิมใช้ไม่ได้ทันที</li>
+</ul>
+<div class="callout"><span class="t">ทางลัดที่ใช้ได้</span>ถ้าคำถามบางข้อเป็นข้อเท็จจริงที่เช็คได้ (เช่น "user readonly มีสิทธิ์ SELECT บนตารางไหม") ให้ Gemini เช็คด้วยคำสั่งจริงก่อนตอบ ไม่ต้องเดา</div>
+
+<h2>ขั้นที่ 3–4: อนุมัติแผน แล้ว Claude ซอยการ์ด</h2>
+<p>หลังคุณอนุมัติแผน Claude ซอยการ์ดเป็น JSON แล้ว arbiter ตรวจด้วยกฎ:</p>
+<div class="tbl"><table>
+  <tr><th>ช่อง</th><th>กฎ</th></tr>
+  <tr><td><code>type</code></td><td>Story หรือ Task</td></tr>
+  <tr><td><code>points</code></td><td>1, 2, 3, 5, 8 และไม่เกิน <code>max_points</code> (8) ใหญ่กว่านี้ต้องซอยอีก</td></tr>
+  <tr><td><code>model</code> / <code>effort</code></td><td>haiku · sonnet · opus / low · medium · high (เป็น<b>คำแนะนำ</b> ที่จะแจ้งในหน้า Gate 1 ของการ์ด)</td></tr>
+  <tr><td><code>scope_hint</code></td><td>path ต้องมีอยู่จริงใน repo หรือขึ้นต้นด้วย <code>new:</code></td></tr>
+  <tr><td><code>depends</code></td><td>ต้องอ้างการ์ดที่มีอยู่ในรายการ</td></tr>
+  <tr><td><code>ac</code>, <code>subtasks</code></td><td>AC แบบ Given/When/Then · ขั้นย่อย (สร้างเป็น subtask ไม่ใส่แต้ม)</td></tr>
+  <tr><td>Epic / Release</td><td>ไม่บังคับ Claude แนะนำ คุณตัดสิน ถ้าไม่มี Story จะแจ้งว่าไม่มีการ์ดเข้า UAT / QA</td></tr>
+</table></div>
+<p>ถ้าไม่ผ่านกฎ arbiter ส่งข้อผิดกลับให้ Claude แก้ 1 รอบอัตโนมัติ (บันทึกใน <code>cards-errors.md</code>) ยังไม่ผ่านอีกจะ ERROR</p>
+
+<h2>ขั้นที่ 5–6: อนุมัติการ์ด แล้ว Gemini สร้างใน Jira</h2>
+<ul>
+  <li>Gemini สร้างการ์ด<b>ใน project KS เท่านั้น</b> ใช้ชื่อ ประเภท แต้ม และ description จาก <code>cards.md</code> ตามตัวอักษร</li>
+  <li>ผูก epic และ fix version ถ้ามี และสร้าง subtask</li>
+  <li>รัน <code>spike link</code> ด้วยรหัสจริงทุกตัว arbiter จะ:
+    <ul>
+      <li>ตรวจว่าครบและไม่ซ้ำ</li>
+      <li>บันทึก <code>jira-map.json</code></li>
+      <li>commit โฟลเดอร์ spike (ไม่มีโค้ด hook จึงผ่าน)</li>
+      <li><b>ดึงการ์ดทุกใบออกจาก Backlog ขึ้นบอร์ด</b> ยกเว้น Epic</li>
+    </ul>
+  </li>
+</ul>
+<div class="callout warn"><span class="t">ทำไม arbiter ต้องดึงการ์ดขึ้นบอร์ดเอง</span>
+การ์ดที่สร้างผ่าน API จะไปอยู่ใน Backlog compartment เสมอ แม้เปลี่ยนเป็น Ready for Dev แล้ว และการ์ดที่ปิดจาก Backlog จะหายจากบอร์ด
+ก่อน v0.3.2 เรื่องนี้เป็นแค่คำขอใน NEXT ซึ่ง Gemini ข้ามไปใน SPIKE-1 ตอนนี้ arbiter เรียก Jira Agile API เอง ถ้าไม่สำเร็จจะขึ้น ⚠ พร้อมลิงก์ให้ลากเอง</div>
+
+<h2>ไฟล์ในโฟลเดอร์ spike</h2>
+<pre><code>.arbiter/spikes/SPIKE-1/
+  intent.md          คำพูดของคุณตอนเริ่ม ตามตัวอักษร
+  inputs/            ไฟล์แนบ (+ .txt ที่แปลงจาก docx/xlsx)
+  answers.md         ทุกข้อความที่คุณตอบ
+  replies.md         REPLY ของ Claude ทุกรอบ
+  questions.md       คำถามที่ค้าง (เขียนทับทุกรอบ)
+  solution.md        แผนล่าสุด
+  approvals.json     อนุมัติแผน / อนุมัติการ์ด (sha256)
+  cards.json, cards.md   รายการการ์ด (เครื่องอ่าน / คนอ่าน)
+  cards-errors.md    กฎที่การ์ดรอบแรกไม่ผ่าน
+  jira-map.json      C1=KS-160, ...
+  sessions.jsonl     session + ค่าใช้จ่าย + model ทุกครั้ง</code></pre>
+
+<h2>ลองตอบ</h2>
+<details class="q"><summary>ควรให้ Gemini ช่วยเกลา requirement ให้สวยก่อนส่ง spike ไหม</summary>
+ไม่ควร เพราะจะทำให้การตีความของ Gemini ติดไปกับโจทย์ รอบคำถามของ spike ทำหน้าที่ทำโจทย์ให้ชัดอยู่แล้ว ถ้าอยากให้ดีขึ้นให้เพิ่มไฟล์แนบ</details>
+<details class="q"><summary>อนุมัติแผนไปแล้ว แต่อยากเปลี่ยนทางเลือก</summary>
+พิมพ์สิ่งที่อยากเปลี่ยนได้เลย Gemini ส่งด้วย <code>spike answer</code> ถ้าแผนเปลี่ยน การอนุมัติแผนและรายการการ์ดเดิมจะถูกยกเลิก แล้วคุณอนุมัติใหม่</details>
+<details class="q"><summary>การ์ดจาก spike แนะนำ "sonnet · medium" จะถูกใช้ตอนไหน</summary>
+ตอนรีวิวและ dispute ของการ์ดนั้น โดยแจ้งในหน้า Gate 1 ก่อน ถ้าคุณไม่ทักในคำอนุมัติก็ใช้ตามนั้น ส่วนการร่าง spec ใช้ Opus · High เสมอ</details>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 3 · แบบเต็มของ /spike อยู่ใน <code>docs/spike-design.md</code></footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

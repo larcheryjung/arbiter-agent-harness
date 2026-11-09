@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>กรณีศึกษา · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 6 · เข้าใจลึก</div>
+<h1>กรณีศึกษาจากงานจริง</h1>
+<p class="lede">กติกาเกือบทุกข้อใน Arbiter มีที่มาจากเหตุการณ์จริง หน้านี้เล่า 3 งานแรก: เกิดอะไรขึ้น เสียเงินเท่าไร และ framework เปลี่ยนเพราะอะไร
+อ่านแล้วจะเข้าใจว่าทำไมกติกาถึงเป็นแบบนี้ ไม่ใช่แค่จำว่ากติกาคืออะไร</p>
+
+<div class="grid g3">
+  <div class="card stat"><b>$6.24</b><span>KS-118 · /feature · epolicy</span></div>
+  <div class="card stat"><b>$24.56</b><span>SPIKE-1 · /spike · strangler</span></div>
+  <div class="card stat"><b>$9.52</b><span>KS-160 · /feature · strangler</span></div>
+</div>
+
+<h2 id="ks118">KS-118: การ์ดจริงใบแรก (5–6 พ.ย.)</h2>
+<p><b>งาน:</b> Concurrency Throttle &amp; Hardware Bulkhead ของ Digital Signer ใน epolicy · <b>ผล:</b> commit <code>e3a4e5a</code> รีวิว 4 รอบโดยไม่ถูกตีกลับเลย · ใช้ Claude $6.24</p>
+<div class="tbl"><table>
+  <tr><th>เกิดอะไร</th><th>ทำไมเป็นปัญหา</th><th>แก้อย่างไร</th></tr>
+  <tr><td>Claude เริ่มทำงานตอน Jira MCP ยังไม่พร้อม แล้วร่าง spec จากการเดา</td><td>spec ที่ไม่ได้อ่านการ์ดจริงดูน่าเชื่อเท่ากับ spec จริง</td><td>arbiter ตรวจ stream ว่าเรียก <code>jira_get_issue</code> ของการ์ดนั้นสำเร็จ ไม่งั้น ERROR</td></tr>
+  <tr><td>Gemini แต่งเหตุผลของ error เอง (ผิด) และแนะนำคำตอบให้คุณ</td><td>คุณตัดสินจากข้อมูลที่ Gemini แต่ง</td><td>workflow ห้ามอธิบาย ตีความ หรือแนะนำคำตอบ</td></tr>
+  <tr><td>คุณต้องถาม "ต้องทำอะไรต่อ" 3 ครั้ง</td><td>NEXT เขียนถึง Gemini คนเดียว</td><td>บรรทัด <b>▶ สิ่งที่คุณต้องทำ</b> ในทุกหน้า</td></tr>
+  <tr><td>STALE ไม่บอกไฟล์ Gemini เดาแล้วพยายาม <code>git checkout</code> รายงาน KS-140 ของคุณ</td><td>เกือบทับงานของคน รอดเพราะคุณกดปฏิเสธ</td><td>STALE แสดงชื่อไฟล์ · ห้าม checkout / restore / reset / stash / clean</td></tr>
+  <tr><td>เอกสารนอกการ์ดเปลี่ยน ทำให้ต้องรีวิวใหม่ทั้งรอบ ($0.79) และต้องใช้ <code>--no-verify</code></td><td>เสียเงินและทำให้คนชินกับการข้าม hook</td><td><code>docs_allow</code></td></tr>
+  <tr><td>Gemini เปิดอ่าน arbiter.py หา env ที่ hook เชื่อ</td><td>agent ศึกษาวิธีหลบกรรมการ</td><td>hook ต้องเห็น Gate 2 ใน approvals · ห้ามอ่านซอร์ส arbiter</td></tr>
+</table></div>
+
+<h2 id="spike1">SPIKE-1: Policy Status API ให้เว็บ TA (9 พ.ย.)</h2>
+<p><b>โจทย์:</b> หน้าบ้านส่ง <code>POCY_REF_NO</code> มา อยากรู้ว่ากรมธรรม์เข้า HBS แล้วหรือยังและสถานะอะไร ขอ API/payload spec ไปทำ UI ก่อน ใช้ 5 view เดิมก่อน
+<b>ผล:</b> แผนที่อนุมัติแล้ว + การ์ด KS-160 (OpenAPI spec) และ KS-166 (เอกสาร contract) · Claude 8 ครั้ง $24.56 (เกินงบเตือน $15)</p>
+<h3>สิ่งที่ได้ผล</h3>
+<ul>
+  <li>คุณเล่าโจทย์แบบพูดคุยธรรมดา ไม่ได้เกลา Gemini ส่งคำของคุณตามตัวอักษร Claude สรุปความเข้าใจกลับมาได้ตรง</li>
+  <li>รอบแรก Claude เจอเรื่องที่ทั้งคุณและ Gemini ยังไม่เห็น: view 3 ตัว inner join กับ <code>BF_DEBIT_NOTE</code> กรมธรรม์ที่เพิ่งนำเข้าจึงมองไม่เห็น ทำให้แยกไม่ออกว่ายังไม่เข้าระบบหรือรอ activate</li>
+  <li>คุยลง session เดิมทุกรอบ คุณแย้ง Claude ได้ (เช่นเรื่องใส่ <code>POCY_REF_NO</code> ใน view ไหน) และ Claude ปรับตาม</li>
+</ul>
+<h3>สิ่งที่สะดุด</h3>
+<div class="tbl"><table>
+  <tr><th>เกิดอะไร</th><th>สถานะ</th></tr>
+  <tr><td>Gemini สร้างการ์ดแล้วไม่ดึงขึ้นบอร์ด เพราะ NEXT เป็นแค่คำขอ การ์ดค้างใน Backlog</td><td>แก้แล้ว v0.3.2: arbiter ดึงขึ้นบอร์ดเองตอน <code>spike link</code></td></tr>
+  <tr><td>spike ไม่รับไฟล์ mockup .html คุณจึงอนุมัติการ์ดโดย Claude ไม่ได้เห็น mockup</td><td>ยังไม่แก้</td></tr>
+  <tr><td><code>questions.md</code> ถูกเขียนทับ คำถามรอบก่อนที่ไม่ได้ตอบหายจากไฟล์</td><td>ยังไม่แก้</td></tr>
+  <tr><td>Gemini อ่านไฟล์ <code>.secret</code> ทั้งไฟล์ (มีรหัส admin และ AWS root) และใส่รหัส readonly user ในคำสั่งตรงๆ</td><td>ยังไม่แก้ ควรมีสคริปต์ต่อ DB</td></tr>
+</table></div>
+<div class="callout"><span class="t">บทเรียนเรื่อง prompt</span>
+ระหว่างทางคุณถามว่าควรให้ Gemini ช่วย "enhance prompt" ก่อนไหม คำตอบคือไม่ เพราะในคำตอบของ Gemini ก่อนเข้า spike ไม่มีเรื่อง inner join เลย
+ถ้าให้ Gemini เกลาโจทย์ ประเด็นนี้อาจถูกกรองหายก่อนถึง Claude วิธีที่ได้ผลคือแนบไฟล์โครงสร้าง view ซึ่งคุณทำไว้แล้ว</div>
+
+<h2 id="ks160">KS-160: การ์ดเอกสารที่ติด deadlock (9 พ.ย.)</h2>
+<p><b>งาน:</b> OpenAPI spec v1 + ตัวอย่าง payload ของ Policy Status API · <b>ผล:</b> commit <code>4cb0dc3</code> หลังรีวิว 4 รอบ · Claude $9.52
+· ทำให้เกิด Arbiter v0.3.2 และ v0.3.3</p>
+<div class="tbl"><table>
+  <tr><th>ช่วง</th><th>เกิดอะไร</th><th>บทเรียน</th></tr>
+  <tr><td>spec</td><td>Claude (Opus) เขียน Approach ให้อ้างไฟล์ตัวอย่างด้วย <code>value: $ref</code> เพื่อให้มีต้นฉบับที่เดียว</td><td>ฟังดูดี แต่ Redocly / OAS 3.0 ไม่ resolve <code>$ref</code> ใต้ <code>value</code> ไม่มีใครพิสูจน์ตอน Gate 1</td></tr>
+  <tr><td>เขียนงาน</td><td>Gemini ไล่แก้ lint ~50 นาที เข้าไปอ่านซอร์สของ redocly ใน npm cache</td><td>Gemini 3.8 Flash คุมขั้นตอนได้ดี แต่เขียนงานละเอียดยังไม่ถึง</td></tr>
+  <tr><td>gate วน 4 รอบ</td><td><code>scope: ไม่มีไฟล์เปลี่ยน</code> ทั้งที่มี 5 ไฟล์ เพราะทุกไฟล์อยู่ใน <code>kong-workspace/**</code> ซึ่งเป็น <code>docs_allow</code> Gemini ลอง <code>git add</code>, <code>git restore</code>, <code>write-tree</code></td><td><b>v0.3.2</b>: ไฟล์ใน scope_allow เป็นงานของการ์ดเสมอ · ไม่มีไฟล์เปลี่ยน = BLOCKED ไม่ใช่ FAIL</td></tr>
+  <tr><td>รีวิวรอบ 1</td><td>FAIL: ใช้ <code>externalValue</code> ทำให้ lint ไม่ตรวจ payload · <code>nullable</code> + <code>allOf</code> ผิดความหมาย · แต่ง license MIT, "Travel Accident", hostname</td><td>Gemini หาทางให้เครื่องตรวจเงียบ แทนที่จะบอกว่าทำตาม spec ไม่ได้ และแต่งข้อมูล</td></tr>
+  <tr><td>รีวิวรอบ 2</td><td>FAIL: ตอนแก้ใส่ <code>example</code> คู่กับ <code>examples</code> ซึ่ง OAS ไม่อนุญาต · ครบ 2 รอบ → ESCALATE</td><td>คุณพิมพ์ "ทำต่อ: ลบ example …" แต่คำตัดสินนี้อยู่แค่ใน <code>state.json</code></td></tr>
+  <tr><td>รีวิวรอบ 3</td><td>FAIL: Gemini เปลี่ยนเป็น inline (lint ผ่านและตรวจ payload จริง) แต่ reviewer ยึด Approach เดิม สั่งกลับไปใช้ <code>value: $ref</code> ซึ่งทำให้ lint พัง 7 จุด</td><td><b>deadlock</b>: reviewer พิสูจน์ไม่ได้ · Builder ไม่มีช่องทางแย้ง · คำตัดสินคนไม่ถึง reviewer · Gemini ใช้ <code>git checkout &lt;tree&gt; -- file</code></td></tr>
+  <tr><td>แก้ spec</td><td>คุณสั่ง <code>answer</code>: "Redocly ไม่ resolve $ref ใต้ value ให้ inline เป็นต้นฉบับ ไฟล์ payload เป็นสำเนา" Claude เพิ่มสคริปต์เทียบสำเนา · Gate 1 ใหม่</td><td>spec ผิด ต้องแก้ที่ spec ไม่ใช่ที่งาน</td></tr>
+  <tr><td>รีวิวรอบ 4</td><td>PASS ด้วย sonnet · medium ตามที่การ์ดแนะนำ $0.56 (Opus รอบก่อน $1.11)</td><td>ที่มาของ model policy</td></tr>
+</table></div>
+<div class="callout ok"><span class="t">ถ้าใช้ v0.3.3 ตั้งแต่ต้น</span>
+<ul style="margin:4px 0 0">
+  <li>รอบ 3 Gemini จะ <code>dispute --prove "npx … lint"</code> แทนการหาทางเลี่ยง</li>
+  <li>Architect เห็น log ที่ lint พัง 7 จุด แล้วตอบ <code>REVISE_SPEC</code> หน้า SPEC_ISSUE จะเสนอให้ใช้ inline</li>
+  <li>คุณพิมพ์ "แก้ spec ตามที่เสนอ" ครั้งเดียวจบ ไม่ต้องผ่านรอบ 2–3</li>
+  <li>หรือถ้าใช้ "ทำต่อ: ใช้ inline ได้" คำตัดสินจะอยู่ใน <code>decisions.md</code> และ reviewer ต้องยึด</li>
+</ul></div>
+
+<h2>สิ่งที่ 3 งานนี้สอน</h2>
+<ol>
+  <li><b>กติกาที่เป็นแค่คำขอใน prompt จะถูกข้ามเมื่อ AI ยุ่ง</b> เรื่องที่สำคัญต้องให้ script ทำเอง (board, ตรวจ Jira read)</li>
+  <li><b>ผู้ตรวจที่อ่านอย่างเดียวพิสูจน์ข้ออ้างเรื่องเครื่องมือไม่ได้</b> ต้องมีช่องทางให้หลักฐานจากเครื่องไปถึงผู้ตรวจ (dispute)</li>
+  <li><b>คำตัดสินของคนต้องไปถึงทุกคนที่ตัดสินต่อ</b> ไม่ใช่เก็บไว้ในไฟล์ที่ไม่มีใครอ่าน (decisions.md)</li>
+  <li><b>ความผิดพลาดที่แพงที่สุดเกิดที่ spec</b> จึงไม่ลด model ที่ขั้น spec</li>
+  <li><b>AI ที่เขียนงานต้องไม่มีทาง "ทำให้เครื่องตรวจเงียบ" โดยไม่มีใครเห็น</b> เมื่อทำตาม spec ไม่ได้ ต้องหยุดและบอก</li>
+</ol>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 6 · บทเรียนรายบรรทัดอยู่ใน <code>LESSONS.md</code></footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

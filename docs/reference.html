@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>อ้างอิง · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">อ้างอิง</div>
+<h1>คำสั่ง STATUS ไฟล์ และค่าตั้ง</h1>
+<p class="lede">หน้านี้สำหรับเปิดค้น ปกติคุณไม่ต้องพิมพ์คำสั่งเหล่านี้เอง Gemini เป็นคนรัน แต่ควรรู้ว่าแต่ละคำสั่งทำอะไร เวลาอ่าน transcript หรือแก้ปัญหา
+ทุกคำสั่งขึ้นต้นด้วย <code>python "C:/local-code-repo/arbiter-agent-harness/bin/arbiter.py"</code> และรันใน repo ของโปรเจกต์</p>
+
+<h2 id="cmd-feature">คำสั่ง /feature</h2>
+<div class="tbl"><table>
+  <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
+  <tr><td><code>spec KS-xx [--model M --effort E]</code></td><td>เริ่มการ์ด Jira (model เฉพาะเมื่อคุณสั่ง)</td></tr>
+  <tr><td><code>spec --local "โจทย์"</code></td><td>เริ่มงานที่ไม่มีการ์ด ได้ <code>LOCAL-n</code></td></tr>
+  <tr><td><code>answer KEY "ข้อความ"</code></td><td>ตอบคำถาม / ขอแก้ spec (ยกเลิก Gate 1 เดิมเสมอ)</td></tr>
+  <tr><td><code>approve KEY "ข้อความ"</code></td><td>Gate 1 (อ่าน model รีวิวจากข้อความได้ เช่น "ใช้ opus high")</td></tr>
+  <tr><td><code>review KEY [--continue "คำตัดสิน"]</code></td><td>ตรวจหลังเขียนงาน / ทำต่อหลัง ESCALATE (คำตัดสินลง decisions.md)</td></tr>
+  <tr><td><code>dispute KEY --claim "…" --prove "คำสั่ง" [--prove …]</code></td><td>แย้งผลตรวจด้วยหลักฐาน (สูงสุด 3 คำสั่ง, 2 ครั้งต่อการ์ด)</td></tr>
+  <tr><td><code>park KEY "ข้อความ"</code> · <code>unpark KEY "ข้อความ"</code></td><td>พักการ์ด / กลับมาทำต่อ</td></tr>
+  <tr><td><code>commit KEY "ข้อความ" [-m msg]</code></td><td>Gate 2</td></tr>
+  <tr><td><code>status [KEY]</code></td><td>ดูว่าการ์ดอยู่ขั้นไหน (ไม่ใส่ KEY = การ์ด ACTIVE)</td></tr>
+</table></div>
+
+<h2 id="cmd-spike">คำสั่ง /spike (<code>arbiter.py spike …</code>)</h2>
+<div class="tbl"><table>
+  <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
+  <tr><td><code>spike new [KS-xx] [--text "…"] [--file path]…</code></td><td>เริ่ม spike จากการ์ด หรือจากข้อความ / ไฟล์ (ได้ <code>SPIKE-n</code>)</td></tr>
+  <tr><td><code>spike answer KEY "ข้อความ" [--file path]</code></td><td>ทุกข้อความของคุณระหว่างถก</td></tr>
+  <tr><td><code>spike approve KEY "ข้อความ"</code></td><td>อนุมัติแผน (ครั้งแรก) / อนุมัติการ์ด (ครั้งที่สอง)</td></tr>
+  <tr><td><code>spike cards KEY</code></td><td>สั่งซอยการ์ดใหม่จากแผนที่อนุมัติแล้ว</td></tr>
+  <tr><td><code>spike link KEY "C1=KS-1 C2=KS-2 [E=KS-0]"</code></td><td>บันทึกรหัสจริง · commit โฟลเดอร์ spike · ดึงการ์ดขึ้นบอร์ด</td></tr>
+  <tr><td><code>spike status [KEY]</code></td><td>ดูสถานะ</td></tr>
+</table></div>
+
+<h2 id="status">STATUS ทั้งหมด</h2>
+<div class="tbl"><table>
+  <tr><th>STATUS</th><th>มาจาก</th><th>ความหมาย</th><th>รอคุณ?</th></tr>
+  <tr><td><span class="st wait">NEEDS_ANSWERS</span></td><td>spec / spike</td><td>มีคำถามพร้อม default</td><td>✔</td></tr>
+  <tr><td><span class="st wait">READY_FOR_GATE1</span></td><td>spec / answer</td><td>spec พร้อมอนุมัติ (มีบรรทัด model ขั้นรีวิว)</td><td>✔</td></tr>
+  <tr><td><span class="st">APPROVED_GATE1</span></td><td>approve</td><td>Gemini เริ่มเขียนงาน</td><td></td></tr>
+  <tr><td><span class="st bad">FAIL</span></td><td>review</td><td>gate หรือ Claude ไม่ผ่าน Gemini แก้เอง</td><td></td></tr>
+  <tr><td><span class="st warn">SPEC_ISSUE</span></td><td>review / dispute</td><td>ปัญหาอยู่ที่ spec มีข้อเสนอแก้</td><td>✔</td></tr>
+  <tr><td><span class="st">DISPUTE_UPHELD</span></td><td>dispute</td><td>finding เดิมถูก Gemini แก้ต่อ</td><td></td></tr>
+  <tr><td><span class="st warn">NEEDS_DECISION</span></td><td>dispute</td><td>Architect ตัดสินไม่ได้ มีทางเลือกให้</td><td>✔</td></tr>
+  <tr><td><span class="st warn">ESCALATE</span></td><td>review / dispute</td><td>ครบเพดาน: ทำต่อ / แก้ spec / พักการ์ด</td><td>✔</td></tr>
+  <tr><td><span class="st ok">READY_FOR_GATE2</span></td><td>review</td><td>ผ่านทั้งเครื่องและ Claude</td><td>✔</td></tr>
+  <tr><td><span class="st warn">STALE</span></td><td>commit</td><td>โค้ดเปลี่ยนหลังรีวิว (บอกชื่อไฟล์)</td><td>✔</td></tr>
+  <tr><td><span class="st ok">COMMITTED</span></td><td>commit</td><td>commit แล้ว Gemini ขยับ Jira</td><td></td></tr>
+  <tr><td><span class="st">PARKED</span> / <span class="st">UNPARKED</span></td><td>park / unpark</td><td>พัก / กลับมาทำต่อ</td><td></td></tr>
+  <tr><td><span class="st wait">READY_FOR_PLAN_APPROVAL</span></td><td>spike</td><td>แผนพร้อมอนุมัติ</td><td>✔</td></tr>
+  <tr><td><span class="st wait">READY_FOR_CARDS_APPROVAL</span></td><td>spike</td><td>รายการการ์ดพร้อมอนุมัติ</td><td>✔</td></tr>
+  <tr><td><span class="st">APPROVED_CARDS</span></td><td>spike</td><td>Gemini สร้างการ์ดใน KS แล้ว link</td><td></td></tr>
+  <tr><td><span class="st ok">SPIKE_DONE</span></td><td>spike link</td><td>commit โฟลเดอร์ spike แล้ว เริ่ม /feature ได้</td><td></td></tr>
+  <tr><td><span class="st warn">BLOCKED</span></td><td>ทุกคำสั่ง</td><td>ทำขั้นนี้ไม่ได้ อ่านเหตุผล</td><td>มักจะ</td></tr>
+  <tr><td><span class="st bad">ERROR</span></td><td>ทุกคำสั่ง</td><td>ระบบมีปัญหา ถาม Claude Code ถ้าไม่เข้าใจ</td><td>✔</td></tr>
+  <tr><td><span class="st">INFO</span></td><td>status</td><td>รายงานสถานะ</td><td></td></tr>
+</table></div>
+
+<h2 id="files">ไฟล์ในโปรเจกต์</h2>
+<pre><code>.arbiter/
+  config.json            ค่าตั้ง (คน commit เท่านั้น ด้วย --no-verify)
+  CURRENT_STATE.md       การ์ดล่าสุดที่ commit
+  ACTIVE                 การ์ดที่กำลังทำ (gitignored)
+  tasks/&lt;KEY&gt;/
+    intent.md            โจทย์ของคุณตามตัวอักษร (LOCAL)
+    spec.md              spec + บล็อก ```arbiter (scope_allow, verify)
+    questions.md         คำถามที่ค้าง
+    answers.md           คำตอบ / คำขอแก้ spec ของคุณตามตัวอักษร
+    approvals.json       Gate 1 (sha ของ spec + model รีวิว) / Gate 2 (tree)
+    model.json           model ที่คุณสั่งตอนเริ่มการ์ด (ถ้ามี)
+    evidence.json        ผลตรวจจากเครื่องรอบล่าสุด + tree
+    review.md            ผลรีวิวทุกรอบ (รวม SPEC_CHANGE)
+    decisions.md         คำตัดสินของคุณระหว่างทาง (ผูกมัด reviewer)
+    disputes.md          ข้อโต้แย้งและผลชี้ขาด
+    dispute-N-pM.log     log ของคำสั่งพิสูจน์
+    parked.json          มีไฟล์นี้ = การ์ดถูกพัก
+    gate2.md             หน้า Gate 2
+    review-input.diff    diff ที่ Claude รีวิว
+    sessions.jsonl       ทุกการเรียก Claude: โหมด model effort ค่าใช้จ่าย jira_read
+    state.json           จำนวนรอบ gate / review / ตีกลับ / dispute
+    gate-rN-*.log        log ของ verify (gitignored)
+  spikes/&lt;KEY&gt;/          ดูบทที่ 3</code></pre>
+
+<h2 id="config">config.json</h2>
+<div class="tbl"><table>
+  <tr><th>key</th><th>ค่าตั้งต้น</th><th>ใช้ทำอะไร</th></tr>
+  <tr><td><code>key_pattern</code></td><td><code>KS-\d+</code></td><td>รหัสการ์ด Jira ที่รับ (LOCAL-n รับเสมอ)</td></tr>
+  <tr><td><code>language</code></td><td><code>th</code></td><td>ภาษาเมื่อคุณยังไม่ได้พิมพ์อะไรในการ์ด</td></tr>
+  <tr><td><code>docs_allow</code></td><td><code>[]</code></td><td>glob ของเอกสารที่ commit ได้โดยไม่มีการ์ด (ไฟล์ใน scope_allow ยังเป็นงานของการ์ด)</td></tr>
+  <tr><td><code>verify</code></td><td>-</td><td><code>[{name, cmd}]</code> เทสต์ชุดหลักของโปรเจกต์</td></tr>
+  <tr><td><code>verify_timeout_sec</code></td><td>3600</td><td>ใช้กับคำสั่งพิสูจน์ของ dispute ด้วย</td></tr>
+  <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE (Gate 1 ใหม่ = นับใหม่)</td></tr>
+  <tr><td><code>max_disputes</code></td><td>2</td><td>dispute ต่อการ์ด</td></tr>
+  <tr><td><code>claude.*</code></td><td>opus, opus, high, 1200, true</td><td><code>spec_model</code>, <code>review_model</code>, <code>effort</code>, <code>timeout_sec</code>, <code>require_jira</code></td></tr>
+  <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code>, <code>read_dirs</code>, <code>max_points</code>, <code>max_rounds_resume</code>, <code>budget_usd</code> (เตือน)</td></tr>
+  <tr><td><code>jira_board_id</code></td><td>5335</td><td>บอร์ดที่ดึงการ์ด KS ขึ้นไป</td></tr>
+</table></div>
+<p class="small muted">env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (บังคับ model ทุกครั้ง), <code>ARBITER_CLAUDE_CMD</code> (fake Claude), <code>ARBITER_BOARD_FAKE</code> (ไม่เรียก Jira จริง)</p>
+
+<h2 id="workflow">กติกาใน workflow ของ Gemini (<code>.agent/workflows/feature.md</code>)</h2>
+<ol class="small">
+  <li>เริ่มด้วย <code>spec</code> หรือ <code>status</code> · ใส่ <code>--model/--effort</code> เฉพาะเมื่อคุณสั่ง</li>
+  <li>ทำตาม <code>STATUS</code> / <code>NEXT</code> เท่านั้น · เรียก arbiter ตรงๆ ห้ามห่อด้วย <code>python -c</code></li>
+  <li>แสดงข้อความของ arbiter ตามตัวอักษร รวมบรรทัด ▶ ห้ามสรุป ตีความ หรือแนะนำคำตอบ</li>
+  <li>ส่งข้อความของคุณตามที่พิมพ์จริง</li>
+  <li>ห้ามเขียน prompt ให้ Claude · ห้ามแก้ <code>.arbiter/</code> · ห้ามอ่านซอร์ส arbiter</li>
+  <li>แก้เฉพาะไฟล์ใน <code>scope_allow</code></li>
+  <li>ห้าม <code>git checkout</code> (รวม <code>&lt;tree&gt; -- file</code>), restore, reset, stash, clean</li>
+  <li>ห้ามตัดสินเองว่าผ่าน · ห้าม commit โค้ดเอง</li>
+  <li>หลัง COMMITTED ขยับ Jira ตาม lifecycle (LOCAL ห้ามแตะ)</li>
+  <li>ขัดกับพฤติกรรมจริงของเครื่องมือ → <code>dispute</code> ห้ามหาทางเลี่ยง</li>
+  <li>ข้อมูลที่ไม่มีที่มา → TODO / placeholder ห้ามแต่ง</li>
+  <li>"ทำต่อ: …" / "แก้ spec: …" / "พักการ์ด" → ทำตาม NEXT · "ทำการ์ด X ต่อ" → <code>unpark</code></li>
+</ol>
+
+<h2 id="install">ติดตั้ง / อัปเดตในโปรเจกต์</h2>
+<pre><code>python C:\local-code-repo\arbiter-agent-harness\install.py --project &lt;repo&gt; ^
+  --verify "unit=&lt;คำสั่งเทสต์&gt;" --docs-allow "kong-workspace/**" --docs-allow "*.md" ^
+  --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"     &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่าน
+
+# แล้วคน commit เอง (เฉพาะ path เหล่านี้ ไม่กวาดไฟล์อื่นที่ stage ค้างไว้)
+git commit --no-verify -m "chore: install arbiter 0.3.3" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
+<ul class="small">
+  <li>รันซ้ำได้: คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ เขียน workflow ใหม่</li>
+  <li><b>โค้ดของ arbiter มีผลทันที</b> เพราะทุกโปรเจกต์เรียกจากโฟลเดอร์เดียวกัน ส่วน workflow ต้องรัน install ใหม่ และ<b>เปิดแชท Gemini ใหม่</b></li>
+  <li>ห้ามรัน install ระหว่างที่การ์ดรอ Gate 2 เพราะ workflow ที่เปลี่ยนทำให้ tree ไม่ตรงกับที่รีวิว (STALE)</li>
+</ul>
+
+<h2 id="retro">ทำ retro</h2>
+<p>เปิด Claude Code ใน repo ไหนก็ได้ แล้วพิมพ์ <code>retro KS-xx</code> Claude Code จะอ่าน:</p>
+<ul class="small">
+  <li>transcript ของ Gemini ที่ <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code> (ห้ามอ่านไฟล์ credential ใน <code>~/.gemini</code>)</li>
+  <li>โฟลเดอร์การ์ดหรือโฟลเดอร์ spike</li>
+</ul>
+<p class="small">แล้วจด 1 บรรทัดต่อเรื่องใน <code>LESSONS.md</code></p>
+
+<h2 id="repo">โครง repo ของ arbiter</h2>
+<pre><code>arbiter-agent-harness/
+  bin/arbiter.py           CLI /feature
+  bin/arbiter_spike.py     CLI /spike
+  bin/arbiter_claude.py    เรียก claude -p (อ่านอย่างเดียว), template, stream, ภาษา
+  bin/arbiter_core.py      git, scope, docs_allow, config จาก HEAD, say() STATUS/NEXT
+  bin/arbiter_board.py     ดึงการ์ด KS ขึ้นบอร์ด
+  bin/arbiter_extract.py   แปลง .docx/.xlsx
+  floor/git/pre_commit.py  hook
+  prompts/                 template ของ Claude (spec, answer, review, review_prev, dispute, spike_*)
+  adapters/antigravity/workflows/   feature.md, spike.md ของ Gemini
+  install.py · tests/ (54 เทสต์ ใช้ fake Claude) · docs/ (คู่มือนี้)
+  README.md · DIRECTION.md · LESSONS.md</code></pre>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · อ้างอิง</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เมื่องานติด · Arbiter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button class="theme-btn" id="themeBtn" type="button">โหมดสี</button>
+<div class="wrap">
+<nav class="toc" aria-label="สารบัญ">
+  <div class="brand">Arbiter Handbook</div>
+  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
+</nav>
+<main>
+
+<div class="eyebrow">บทที่ 4 · เรียนตามลำดับ</div>
+<h1>เมื่องานติด</h1>
+<p class="lede">งานติดได้ 3 แบบ: <b>งานยังไม่ดีพอ</b> (แก้แล้วจบ), <b>spec ผิดเอง</b> (แก้งานอย่างไรก็ไม่จบ) และ <b>AI สองฝั่งเห็นไม่ตรงกัน</b>
+Arbiter มีทางออกให้ทุกแบบ โดยหลักคือ deadlock ต้องจบด้วย <b>หลักฐานจากเครื่อง</b> หรือ <b>คำตัดสินของคุณ</b> ไม่ใช่ให้ AI สองตัวเถียงกันเป็นข้อความ</p>
+
+<h2 id="map">แผนที่: เห็นอะไร แล้วทำอะไร</h2>
+<div class="tbl"><table>
+  <tr><th>เห็น</th><th>แปลว่า</th><th>ใครทำต่อ</th></tr>
+  <tr><td><span class="st bad">FAIL</span></td><td>เครื่องตรวจหรือ Claude ตีกลับ</td><td>Gemini แก้เอง คุณไม่ต้องทำอะไร</td></tr>
+  <tr><td><span class="st warn">ESCALATE</span></td><td>ตีกลับครบ 2 รอบ, gate ครบ 6 รอบ หรือ dispute ครบ 2 ครั้ง</td><td><b>คุณ</b>: <code>ทำต่อ: …</code> / <code>แก้ spec: …</code> / <code>พักการ์ด</code></td></tr>
+  <tr><td><span class="st warn">SPEC_ISSUE</span></td><td>ปัญหาอยู่ที่ spec (Claude เสนอแก้มาให้)</td><td><b>คุณ</b>: <code>แก้ spec ตามที่เสนอ</code> หรือ <code>ทำต่อ: …</code></td></tr>
+  <tr><td><span class="st">DISPUTE_UPHELD</span></td><td>Architect ยืนตาม finding เดิม และบอกทางที่ทำได้</td><td>Gemini แก้ต่อ (คุณทักได้ถ้าไม่เห็นด้วย)</td></tr>
+  <tr><td><span class="st warn">NEEDS_DECISION</span></td><td>ตัดสินจากหลักฐานไม่ได้ เป็นเรื่องธุรกิจหรือทางเลือกที่ถูกทั้งคู่</td><td><b>คุณ</b> เลือกทาง</td></tr>
+  <tr><td><span class="st warn">STALE</span></td><td>ไฟล์งานเปลี่ยนหลังรีวิวผ่าน</td><td><b>คุณ</b> ดูว่าใครแก้ แล้วสั่ง <code>review ใหม่</code></td></tr>
+  <tr><td><span class="st warn">BLOCKED</span></td><td>ทำขั้นนี้ไม่ได้ (ยังไม่ผ่าน Gate 1, spec ถูกแก้, การ์ดถูกพัก, ไม่มีไฟล์เปลี่ยน)</td><td>อ่านเหตุผล แล้วทำตาม ▶</td></tr>
+  <tr><td><span class="st bad">ERROR</span></td><td>ระบบมีปัญหา (Claude อ่าน Jira ไม่ได้, ตอบผิดรูปแบบ, git ไม่ผ่าน)</td><td>ถ้าไม่เข้าใจ <b>ถาม Claude Code</b> อย่าให้ Gemini เดา</td></tr>
+  <tr><td><span class="st">PARKED</span></td><td>การ์ดถูกพัก</td><td>กลับมาด้วย <code>ทำการ์ด KS-xx ต่อ</code></td></tr>
+</table></div>
+
+<h2 id="fail">FAIL: วงจรปกติ</h2>
+<p>FAIL เป็นเรื่องปกติ Gemini แก้เองแล้วรัน review ใหม่โดยคุณไม่ต้องทำอะไร ตั้งแต่รอบที่ 2 Claude ตรวจเฉพาะข้อเดิมและสิ่งที่พังเพิ่ม
+ระบบจะส่งเรื่องให้คุณเมื่อถึงเพดานใดเพดานหนึ่ง:</p>
+<div class="tbl"><table>
+  <tr><th>เพดาน</th><th>ค่า</th><th>config</th></tr>
+  <tr><td>Claude ตีกลับ</td><td>2 รอบ</td><td><code>max_rejections</code></td></tr>
+  <tr><td>รัน gate</td><td>6 รอบ</td><td><code>max_gate_runs</code></td></tr>
+  <tr><td>dispute</td><td>2 ครั้งต่อการ์ด</td><td><code>max_disputes</code></td></tr>
+</table></div>
+<p class="small muted">เมื่อคุณอนุมัติ spec ใหม่ (Gate 1 ใหม่) เพดานตีกลับและ gate นับใหม่ เพราะถือเป็นสัญญาฉบับใหม่</p>
+
+<h2 id="escalate">ESCALATE: คุณมี 3 ทาง</h2>
+<div class="grid g3">
+  <div class="card"><h3>ทำต่อ: &lt;คำตัดสิน&gt;</h3><p class="small">เช่น <code>ทำต่อ: ใช้ inline examples ได้ ไม่ต้องอ้างไฟล์</code><br>Gemini รัน <code>review --continue</code> เพดานรีเซ็ต และ<b>คำตัดสินถูกบันทึกลง <code>decisions.md</code></b> ซึ่ง reviewer ต้องยึด</p></div>
+  <div class="card"><h3>แก้ spec: …</h3><p class="small">เช่น <code>แก้ spec: เปลี่ยน AC11 เป็น…</code><br>Gemini ส่งด้วย <code>answer</code> Gate 1 เดิมถูกยกเลิก Claude แก้ spec แล้วคุณอนุมัติ Gate 1 ใหม่</p></div>
+  <div class="card"><h3>พักการ์ด</h3><p class="small">Gemini รัน <code>park</code> งานอยู่ครบ ระหว่างพักจะ review หรือ commit ไม่ได้ กลับมาด้วย <code>ทำการ์ด KS-xx ต่อ</code></p></div>
+</div>
+<div class="callout"><span class="t">เลือกทางไหนดี</span>
+ถ้าเรื่องที่ติด<b>ไม่ได้ทำให้ spec ผิด</b> แค่ต้องมีคนตัดสิน เลือก <b>ทำต่อ</b> พร้อมเขียนคำตัดสินให้ชัด ถ้า<b>สิ่งที่เขียนใน spec ทำไม่ได้หรือไม่ใช่สิ่งที่ต้องการแล้ว</b> เลือก <b>แก้ spec</b>
+คำว่า "ทำต่อ" เฉยๆ โดยไม่มีคำตัดสิน มักทำให้วนรอบเดิม</div>
+
+<h2 id="decisions">decisions.md: คำตัดสินของคุณผูกมัด reviewer</h2>
+<p>ทุกครั้งที่คุณพิมพ์ "ทำต่อ: …", "พักการ์ด" หรือ "ทำการ์ดต่อ" arbiter บันทึกคำพูดของคุณลง <code>.arbiter/tasks/KS-xx/decisions.md</code> ตามตัวอักษร
+prompt ของ reviewer และของ Architect ตอนชี้ขาด dispute สั่งให้:</p>
+<ul>
+  <li>อ่านไฟล์นี้ทุกครั้ง</li>
+  <li>ถือว่าคำตัดสินของคุณมีผลเหนือ spec ในเรื่องที่พูดถึง</li>
+  <li>ห้ามตีกลับเรื่องที่คุณตัดสินแล้ว</li>
+</ul>
+<p class="small muted">ก่อน v0.3.3 คำตัดสินเหล่านี้อยู่แค่ใน <code>state.json</code> ซึ่ง reviewer มองไม่เห็น เป็นสาเหตุหลักที่ KS-160 วน 3 รอบ</p>
+
+<h2 id="spec-issue">SPEC_ISSUE: เมื่อ spec ผิดเอง</h2>
+<p>reviewer มีคำตัดสินได้ 3 แบบ: PASS, FAIL และ <b>SPEC_ISSUE</b> ใช้เมื่อปัญหาอยู่ที่ spec ไม่ใช่ที่งาน เช่น Approach ทำไม่ได้จริง, AC ขัดกันเอง
+หรือถ้าทำตาม spec ตรงตัวจะได้ผลผิด ต้องแนบ <code>SPEC_CHANGE</code> คือข้อเสนอแก้ spec มาด้วย</p>
+<ul>
+  <li><b>ไม่นับเป็นรอบตีกลับ</b> เพราะการแก้งานไม่ช่วยให้จบ</li>
+  <li>หน้า SPEC_ISSUE แสดงข้อเสนอ แล้วรอคุณ:
+    <ul>
+      <li>พิมพ์ <code>แก้ spec ตามที่เสนอ</code> Claude ตัวร่าง spec จะอ่าน SPEC_CHANGE เอง แล้วคุณอนุมัติ Gate 1 ใหม่</li>
+      <li>หรือ <code>ทำต่อ: &lt;คำตัดสิน&gt;</code> ถ้าไม่เห็นด้วย</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="dispute">dispute: Builder แย้งด้วยหลักฐาน</h2>
+<p>บางครั้ง reviewer พูดถึงพฤติกรรมของเครื่องมือที่ตัวเองพิสูจน์ไม่ได้ เพราะอ่านอย่างเดียว เช่นใน KS-160 Claude ยืนยันว่า Redocly จะอ่าน <code>$ref</code> ใต้ <code>value</code>
+ซึ่งไม่จริง ก่อนหน้านี้ Gemini ทำได้แค่สองอย่าง คือหาทางเลี่ยงจนเครื่องตรวจเงียบ หรือขอให้คุณช่วย ตอนนี้มีทางที่สาม:</p>
+<pre><code>python arbiter.py dispute KS-160 \
+  --claim "Redocly ไม่ resolve $ref ใต้ value" \
+  --prove "npx --yes @redocly/cli@1 lint --extends=recommended-strict kong-workspace/notes/policy-status-api.openapi.yaml"</code></pre>
+<ol class="steps">
+  <li><b>arbiter รันคำสั่งพิสูจน์เอง</b> (1–3 คำสั่ง ห้ามมี <code>| &amp; ; &lt; &gt; `</code>) เก็บ log เป็น <code>dispute-N-pM.log</code> และเตือนถ้าคำสั่งแก้ไฟล์งาน</li>
+  <li><b>บันทึกลง <code>disputes.md</code></b> ข้ออ้างของ Builder ถูกติดป้าย "ยังไม่ยืนยัน" และไม่ถูกใส่ใน prompt โดยตรง</li>
+  <li><b>Claude (Architect) ชี้ขาด</b> จาก spec, decisions, review ล่าสุด และ log:
+    <div class="tbl"><table>
+      <tr><th>ผล</th><th>เกิดอะไรต่อ</th></tr>
+      <tr><td><code>UPHOLD</code></td><td>finding เดิมถูก พร้อมบอกทางที่ทำตาม spec ได้ → <span class="st">DISPUTE_UPHELD</span> Gemini แก้ต่อ</td></tr>
+      <tr><td><code>REVISE_SPEC</code></td><td>log แสดงว่าทำตาม spec ไม่ได้ → หน้า <span class="st warn">SPEC_ISSUE</span> รอคุณ</td></tr>
+      <tr><td><code>NEED_HUMAN</code></td><td>ตัดสินจากหลักฐานไม่ได้ → <span class="st warn">NEEDS_DECISION</span> พร้อมทางเลือก 2–3 ทาง</td></tr>
+    </table></div>
+  </li>
+</ol>
+<div class="callout warn"><span class="t">ทำไมไม่ให้ Gemini "ไปถาม Claude นอกรอบ"</span>
+เพราะเท่ากับให้คนถูกตรวจเขียนโจทย์ให้คนตรวจ ซึ่งเป็นสิ่งที่ Arbiter ตั้งใจกันไว้ตั้งแต่แรก dispute ให้ Gemini ส่งได้แค่<b>คำสั่ง</b>
+ผลของคำสั่งเป็นข้อเท็จจริงที่เครื่องสร้าง ไม่ใช่คำอธิบายของ Gemini</div>
+<p>workflow ข้อ 10 สั่ง Gemini ว่า ถ้าทำตาม spec หรือ finding แล้วขัดกับพฤติกรรมจริงของเครื่องมือ <b>ห้ามหาทางเลี่ยง</b>
+(เปลี่ยนวิธีจนเครื่องตรวจเงียบ, ปิด rule) ให้ใช้ dispute และหน้า FAIL ของ arbiter ก็บอกเรื่องนี้ทุกครั้ง</p>
+
+<h2 id="stale">STALE: ไฟล์เปลี่ยนหลังรีวิว</h2>
+<p>arbiter แสดงรายชื่อไฟล์ที่เปลี่ยน และ <b>ห้าม Gemini ย้อน, stash หรือลบไฟล์เหล่านั้นเอง</b> (ใน KS-118 Gemini เกือบ checkout ทับรายงานของคุณ)
+คุณดูว่าใครแก้ ถ้าการแก้นั้นควรอยู่ในงานให้พิมพ์ <code>review ใหม่</code> ถ้าไม่ควรให้บอก Gemini ว่าจะจัดการอย่างไร
+เอกสารนอกการ์ด (<code>docs_allow</code>) เปลี่ยนได้โดยไม่ทำให้ STALE</p>
+
+<h2 id="blocked">BLOCKED และ ERROR ที่เจอบ่อย</h2>
+<div class="tbl"><table>
+  <tr><th>ข้อความ</th><th>สาเหตุ</th><th>ทำอย่างไร</th></tr>
+  <tr><td>ไม่พบไฟล์ที่เปลี่ยนตาม scope_allow</td><td>ยังไม่ได้เขียนงาน หรือเขียนในไฟล์ที่ไม่ได้อยู่ใน scope (เช่นเอกสารนอกการ์ด)</td><td>ถ้ายังไม่เขียน สั่งให้ทำต่อ ถ้าเขียนแล้ว ถาม Claude Code</td></tr>
+  <tr><td>spec.md ถูกแก้หลังอนุมัติ Gate 1</td><td>มีคนแก้ spec โดยตรง</td><td>อนุมัติ spec ใหม่ (Gemini ห้ามแก้ <code>.arbiter/</code>)</td></tr>
+  <tr><td>config ในเครื่องไม่ตรงกับฉบับที่ commit</td><td>หลังรัน install หรือมีคนแก้ config</td><td>คุณตรวจแล้ว <code>git commit --no-verify</code> เฉพาะ config/workflows</td></tr>
+  <tr><td>Claude อ่านการ์ดจาก Jira ไม่สำเร็จ</td><td>Jira MCP ยังไม่พร้อม หรือ credential หมดอายุ</td><td>พิมพ์ <code>ลองใหม่</code> ถ้าซ้ำ ให้ Claude Code ตรวจการเชื่อมต่อ</td></tr>
+  <tr><td>อ่านไฟล์แนบไม่ได้</td><td>ชนิดไฟล์ที่ spike ยังไม่รับ เช่น .html</td><td>ส่งเป็น PDF/.docx หรือบอก path ในข้อความ</td></tr>
+</table></div>
+
+<h2 id="claude-code">เมื่อไรควรเปิด Claude Code</h2>
+<ul>
+  <li>เจอ ERROR ที่ไม่เข้าใจ หรือเห็น Gemini ทำอะไรแปลก (วนคำสั่งเดิม, เปิดอ่านไฟล์ใน <code>.arbiter/</code>, รัน git แปลกๆ)</li>
+  <li>หลังจบการ์ดหรือ spike: <code>retro KS-xx</code> เพื่อจดบทเรียน</li>
+  <li>อยากรู้ว่า Gemini ติดอะไร: Claude Code อ่าน transcript ของ Gemini ได้ที่ <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/</code></li>
+</ul>
+
+<h2>ลองตอบ</h2>
+<details class="q"><summary>Claude ตีกลับว่า "ควรใช้วิธี X" แต่ Gemini ลองแล้ว X ทำให้ lint พัง Gemini ควรทำอะไร</summary>
+<code>dispute</code> โดยใส่คำสั่ง lint เป็น <code>--prove</code> ห้ามเปลี่ยนไปใช้วิธีอื่นที่ทำให้ lint เงียบโดยไม่บอกใคร</details>
+<details class="q"><summary>ขึ้น ESCALATE แล้วคุณพิมพ์ "ทำต่อ" เฉยๆ จะเกิดอะไร</summary>
+เพดานรีเซ็ตและรีวิวรอบใหม่เริ่ม แต่ไม่มีคำตัดสินให้ reviewer ยึด จึงมีโอกาสตีกลับเรื่องเดิม ควรพิมพ์ "ทำต่อ: &lt;สิ่งที่ตัดสิน&gt;"</details>
+<details class="q"><summary>dispute ครบ 2 ครั้งแล้วยังไม่จบ</summary>
+ครั้งที่ 3 arbiter ไม่เรียก Claude แต่ขึ้น ESCALATE ให้คุณตัดสินเลย</details>
+
+<div class="pager"></div>
+<footer class="foot">Arbiter Handbook · บทที่ 4</footer>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
