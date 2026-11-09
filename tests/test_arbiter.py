@@ -80,7 +80,8 @@ class Base(unittest.TestCase):
         return json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
 
     def h(self, *args):
-        env = dict(os.environ, FAKE_DIR=str(self.fake), ARBITER_CLAUDE_CMD=f"{sys.executable}|{FAKE}")
+        env = dict(os.environ, FAKE_DIR=str(self.fake), ARBITER_CLAUDE_CMD=f"{sys.executable}|{FAKE}",
+                   ARBITER_BOARD_FAKE=getattr(self, "board_fake", None) or str(self.fake / "board.jsonl"))
         r = subprocess.run([sys.executable, str(ARBITER), *args], cwd=self.repo, capture_output=True,
                            text=True, encoding="utf-8", env=env)
         status = next((ln[8:].split()[0] for ln in r.stdout.splitlines() if ln.startswith("STATUS: ")), None)
@@ -258,6 +259,7 @@ class ArbiterTest(Base):
         self.queue([spec_resp()])
         st, out = self.h("spec", "--local", "งานที่สอง")
         self.assertIn("LOCAL-2", out)  # numbering continues
+        self.assertFalse((self.fake / "board.jsonl").exists())  # LOCAL cards are not on Jira: no board call
 
     def test_local_key_needs_users_words(self):
         st, out = self.h("spec", "LOCAL-7")
@@ -296,6 +298,45 @@ class ArbiterTest(Base):
         self.git("add", "README.md")  # docs-only commit passes the hook without a card
         self.assertEqual(self.git("commit", "-q", "-m", "docs", check=False).returncode, 0)
 
+    def test_card_whose_work_is_docs_is_reviewed_and_committed(self):  # KS-160: OpenAPI spec under kong-workspace/
+        self.cfg(docs_allow=["kong-workspace/**", "*.md"])
+        spec = SPEC.replace("  - src/**", "  - kong-workspace/notes/api.yaml\n  - kong-workspace/payloads/*.json")
+        self.queue([spec_resp(spec=spec)])
+        self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")
+        self.assertEqual(self.h("approve", "KS-1", "อนุมัติ Gate 1")[0], "APPROVED_GATE1")
+        self.write("kong-workspace/notes/api.yaml", "openapi: 3.1.0\n")
+        self.write("kong-workspace/payloads/req.json", "{}\n")
+        self.write("kong-workspace/notes/other.md", "side note\n")  # a doc the card does not name: stays a side doc
+        self.queue([review_resp("PASS")])
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE2", out)
+        diff = self.card("review-input.diff").read_text(encoding="utf-8")
+        self.assertIn("api.yaml", diff)
+        self.assertIn("req.json", diff)
+        self.assertNotIn("other.md", diff)
+        self.write("kong-workspace/notes/api.yaml", "openapi: 3.1.0\n# edited\n")  # the card's doc: STALE
+        self.assertEqual(self.h("commit", "KS-1", "อนุมัติ Gate 2")[0], "STALE")
+        self.write("kong-workspace/notes/api.yaml", "openapi: 3.1.0\n")
+        st, out = self.h("commit", "KS-1", "อนุมัติ Gate 2")
+        self.assertEqual(st, "COMMITTED", out)
+        files = self.git("show", "--name-only", "--format=", "HEAD").stdout.split()
+        self.assertIn("kong-workspace/notes/api.yaml", files)
+        self.assertIn("kong-workspace/payloads/req.json", files)
+        self.assertNotIn("kong-workspace/notes/other.md", files)
+        self.assertIn("- kong-workspace/notes/other.md", out)
+
+    def test_review_with_nothing_changed_blocks_instead_of_looping(self):
+        self.cfg(docs_allow=["*.md"])
+        self.to_gate1()
+        self.write("README.md", "doc only\n")  # in docs_allow, not in scope_allow: not the card's work
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "BLOCKED", out)
+        self.assertIn("ไม่พบไฟล์ที่เปลี่ยนตาม scope_allow ของ KS-1", out)
+        self.assertIn("- README.md", out)
+        self.assertIn("ห้ามรัน review ซ้ำเอง", out)
+        self.assertIn("▶ สิ่งที่คุณต้องทำ: ถ้ายังไม่ได้ลงมือทำ", out)
+        self.assertEqual(len(self.calls()), 1)  # only the spec call: no Claude review
+
     def test_human_doc_commit_mid_card_is_not_stale_and_not_reverted(self):
         self.cfg(docs_allow=["*.md"])
         self.to_gate2()
@@ -325,6 +366,36 @@ class ArbiterTest(Base):
         self.assertFalse(hc.is_doc("sub/claude.md", ["**"]))
         self.assertFalse(hc.is_doc(".env", ["**"]))
         self.assertTrue(hc.is_doc("docs/a/b.md", ["docs/**"]))
+
+    # ---------- Jira board ----------
+    def test_jira_card_is_moved_onto_the_board_when_work_starts(self):
+        self.queue([spec_resp()])
+        st, out = self.h("spec", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE1", out)
+        self.assertIn("(ดึงการ์ด KS-1 ขึ้นบอร์ด 5335 แล้ว)", out)
+        rows = (self.fake / "board.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([json.loads(r) for r in rows], [{"board": "5335", "issues": ["KS-1"]}])
+
+    def test_board_failure_tells_the_user_and_does_not_block(self):
+        self.board_fake = "fail"
+        self.queue([spec_resp()])
+        st, out = self.h("spec", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE1", out)
+        self.assertIn("⚠ ดึงการ์ด KS-1 ขึ้นบอร์ดไม่สำเร็จ (fake failure)", out)
+        self.assertIn("boards/5335/backlog", out)
+        self.assertLess(out.index("⚠ ดึงการ์ด"), out.index("STATUS:"))
+
+    def test_board_only_ever_sends_ks_keys(self):
+        import arbiter_board
+        log = self.fake / "direct.jsonl"
+        os.environ[arbiter_board.FAKE_ENV] = str(log)
+        try:
+            hc.NOTICES.clear()
+            self.assertTrue(arbiter_board.to_board(["ABC-1", "LOCAL-2", "KS-7", "KS-7"], {"jira_board_id": 99}))
+        finally:
+            del os.environ[arbiter_board.FAKE_ENV]
+            hc.NOTICES.clear()
+        self.assertEqual(json.loads(log.read_text(encoding="utf-8")), {"board": "99", "issues": ["KS-7"]})
 
     def test_uncommitted_config_edit_is_refused(self):
         self.to_gate1()

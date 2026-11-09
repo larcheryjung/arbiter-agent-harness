@@ -7,10 +7,10 @@ Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แ
 
 ## สถานะ (2026-11-09)
 
-- **v0.3.1** · เทสต์ 42 ข้อ: `python -m unittest discover -s tests`
+- **v0.3.2** · เทสต์ 47 ข้อ: `python -m unittest discover -s tests`
 - Pilot `/feature`: `C:\local-code-repo\hbs3\epolicy` (branch `dev`) ติดตั้ง v0.2.0 แล้ว · การ์ดจริง 1/10 (KS-118 → `e3a4e5a`, ค่า Claude $6.24)
-- Pilot `/spike`: `C:\local-code-repo\hbs3\hbs-strangler-service` (ยังไม่ได้ติดตั้ง) โจทย์: ทีม TA ดูว่าข้อมูลขายเข้า HBS แล้วหรือยัง สถานะอะไร · อ่าน `hbs-legacy/hbs-web-core`
-- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น
+- Pilot `/spike`: `C:\local-code-repo\hbs3\hbs-strangler-service` (ติดตั้ง 0.3.1) · SPIKE-1 จบแล้ว → KS-160, KS-166 (Policy Status API spec ให้เว็บ TA) · KS-160 กำลังทำด้วย /feature
+- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น, ดึงการ์ด KS ขึ้นบอร์ดเอง (`spike link`, `spec KS-xx`)
 - ยังไม่มี: `/poc`, `/quick`, Ops, pre-push, hook กัน HBS DB/prod, pack `jira-ks`
 
 ## Roadmap ย่อ
@@ -38,6 +38,7 @@ bin/arbiter_spike.py     CLI /spike (arbiter.py spike ...): new | answer | appro
 bin/arbiter_claude.py    เรียก claude -p (อ่านอย่างเดียว), template, stream-json, ภาษา
 bin/arbiter_core.py      git, scope, config จาก HEAD, say() STATUS/NEXT
 bin/arbiter_extract.py   แปลง .docx/.xlsx ที่แนบมากับ requirement เป็นข้อความ
+bin/arbiter_board.py     ดึงการ์ด KS ออกจาก Backlog ขึ้นบอร์ด (Jira Agile API, ไม่บล็อกงาน)
 floor/git/pre_commit.py  hook (โปรเจกต์ตั้ง core.hooksPath มาที่ floor/git)
 prompts/                 template ที่ arbiter สร้าง prompt ให้ Claude (Gemini เขียน prompt เองไม่ได้)
 adapters/antigravity/workflows/   feature.md, spike.md ของ Gemini (install คัดลอกและฝัง path)

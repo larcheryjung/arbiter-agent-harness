@@ -26,7 +26,7 @@ Gemini ─► arbiter spike new ...                          (ไม่แตะ
   🚪 อนุมัติแผน: อนุมัติ solution
   Claude แตกการ์ดอัตโนมัติ → cards.json → arbiter ตรวจด้วยกฎ (ข้อ 4) → ไม่ผ่านให้ Claude แก้ 1 รอบอัตโนมัติ
   🚪 อนุมัติการ์ด: อนุมัติรายการการ์ด
-Gemini ─► สร้างการ์ดใน KS ตาม cards.json ทีละฟิลด์ + move-to-board.ps1 ─► arbiter spike link <ID> "C1=KS-201 ..."
+Gemini ─► สร้างการ์ดใน KS ตาม cards.json ทีละฟิลด์ ─► arbiter spike link <ID> "C1=KS-201 ..."
 arbiter ─► commit โฟลเดอร์ spike (ไม่มีโค้ด hook ผ่านเอง) ─► การ์ดแต่ละใบเข้า /feature KS-xx
 ```
 

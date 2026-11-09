@@ -114,7 +114,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 <div class="wrap">
 <nav class="toc" aria-label="หมวด">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.1 · อัปเดต 9 พ.ย. 2026</div>
+  <div class="ver">v0.3.2 · อัปเดต 9 พ.ย. 2026</div>
   <a href="#now">สถานะปัจจุบัน</a>
   <a href="#use">วิธีใช้</a>
   <a href="#how">ทำงานอย่างไร</a>
@@ -131,9 +131,9 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
   <p class="lede">harness ตัวที่ 5 ของคุณก้อง ใช้แทน AeroHarness: Gemini ยังเรียก Claude เองอัตโนมัติเหมือนเดิม แต่การตัดสินว่างานผ่านหรือไม่ ย้ายจาก “AI รายงานเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคนกดอนุมัติแค่ Gate 1 กับ Gate 2</p>
 
   <div class="grid g4" style="margin-top:18px">
-    <div class="card stat"><b>v0.3.1</b><span>เพิ่ม <code>/spike</code> · 9 พ.ย.</span></div>
+    <div class="card stat"><b>v0.3.2</b><span>การ์ดเอกสาร + ขึ้นบอร์ดเอง · 9 พ.ย.</span></div>
     <div class="card stat"><b>1 / 10</b><span>การ์ดจริงในช่วง pilot (KS-118)</span></div>
-    <div class="card stat"><b>42</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
+    <div class="card stat"><b>47</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
     <div class="card stat"><b>$6.24</b><span>ค่า Claude ของ KS-118 ทั้งการ์ด</span></div>
   </div>
 
@@ -330,6 +330,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
     <tr><td><code>af02f35</code> v0.2.0</td><td>6 พ.ย.</td><td>การ์ด LOCAL, บรรทัด ▶, STALE บอกไฟล์, <code>docs_allow</code>, config จาก HEAD, hook ต้องเห็น Gate 2, ภาษาตามผู้ใช้</td></tr>
     <tr><td>v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>spike.read_dirs</code>, /feature อ่านแผนของ spike เอง, แยก <code>arbiter_claude.py</code>, 41 เทสต์</td></tr>
     <tr><td>v0.3.1</td><td>9 พ.ย.</td><td>spike: Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน) หน้าการ์ดแจ้งเมื่อไม่มี Story</td></tr>
+    <tr><td>v0.3.2</td><td>9 พ.ย.</td><td>ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> นับเป็นงานของการ์ดแม้อยู่ใน <code>docs_allow</code> (KS-160) · review ที่ไม่มีไฟล์เปลี่ยนเป็น BLOCKED ไม่ใช่ FAIL · arbiter ดึงการ์ด KS ขึ้นบอร์ดเองตอน <code>spike link</code> และ <code>spec KS-xx</code> (<code>bin/arbiter_board.py</code>) · 47 เทสต์</td></tr>
   </table></div>
 
   <h2>บทเรียนจาก KS-118 (การ์ดจริงใบแรก)</h2>
@@ -409,14 +410,15 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
     <tr><th>key</th><th>ค่าตั้งต้น</th><th>ใช้ทำอะไร</th></tr>
     <tr><td><code>key_pattern</code></td><td><code>KS-\d+</code></td><td>รหัสการ์ด Jira ที่รับ (LOCAL-n รับเสมอ)</td></tr>
     <tr><td><code>language</code></td><td><code>th</code></td><td>ภาษาเมื่อคุณยังไม่ได้พิมพ์อะไรในการ์ด</td></tr>
-    <tr><td><code>docs_allow</code></td><td><code>[]</code></td><td>glob ของเอกสารที่ commit ได้โดยไม่มีการ์ด</td></tr>
+    <tr><td><code>docs_allow</code></td><td><code>[]</code></td><td>glob ของเอกสารที่ commit ได้โดยไม่มีการ์ด (ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> ยังเป็นงานของการ์ด)</td></tr>
     <tr><td><code>verify</code></td><td>-</td><td><code>[{name, cmd}]</code> เทสต์ชุดหลักของโปรเจกต์</td></tr>
     <tr><td><code>verify_timeout_sec</code></td><td>3600</td><td></td></tr>
     <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE</td></tr>
     <tr><td><code>claude.*</code></td><td>opus, high, 1200, require_jira true</td><td><code>spec_model</code>, <code>review_model</code>, <code>effort</code>, <code>timeout_sec</code>, <code>require_jira</code></td></tr>
-    <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code> {ชื่อ: path} ที่การ์ดเลือกได้, <code>read_dirs</code> repo อื่นที่ Claude อ่าน, <code>max_points</code>, <code>max_rounds_resume</code> (เกินแล้วเริ่ม session ใหม่จากไฟล์), <code>budget_usd</code> (เตือน), <code>board_cmd</code></td></tr>
+    <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code> {ชื่อ: path} ที่การ์ดเลือกได้, <code>read_dirs</code> repo อื่นที่ Claude อ่าน, <code>max_points</code>, <code>max_rounds_resume</code> (เกินแล้วเริ่ม session ใหม่จากไฟล์), <code>budget_usd</code> (เตือน)</td></tr>
+    <tr><td><code>jira_board_id</code></td><td>5335</td><td>บอร์ดที่ arbiter ดึงการ์ด KS ขึ้นไป (ส่งได้เฉพาะ KS-n) credential จาก env <code>JIRA_*</code> หรือ Jira MCP ใน <code>~/.claude.json</code> ถ้าไม่สำเร็จจะบอกให้ลากเอง ไม่บล็อกงาน</td></tr>
   </table></div>
-  <p>env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (เช่น haiku), <code>ARBITER_CLAUDE_CMD</code> (fake Claude ในเทสต์)</p>
+  <p>env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (เช่น haiku), <code>ARBITER_CLAUDE_CMD</code> (fake Claude ในเทสต์), <code>ARBITER_BOARD_FAKE</code> (เทสต์: ไม่เรียก Jira จริง)</p>
 
   <h2>Repo ของ arbiter</h2>
 <pre><code>C:\local-code-repo\arbiter-agent-harness\
@@ -432,7 +434,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
   <p>ตรวจย้อนหลังสิ่งที่ Gemini ทำ: <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code></p>
 </section>
 
-<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.1) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
+<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.2) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
 </main>
 </div>
 <script>

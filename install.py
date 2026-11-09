@@ -39,7 +39,7 @@ def main():
                 "claude": {"spec_model": "opus", "review_model": "opus", "effort": "high", "timeout_sec": 1200,
                            "require_jira": True},
                 "spike": {"model": "opus", "effort": "high", "repos": {}, "read_dirs": [], "max_points": 8,
-                          "max_rounds_resume": 6, "budget_usd": 15, "board_cmd": ""}}
+                          "max_rounds_resume": 6, "budget_usd": 15}}
     if not cfg_path.exists():
         cfg = dict(defaults, verify=[{"name": v.split("=", 1)[0].strip(), "cmd": v.split("=", 1)[1].strip()}
                                      for v in a.verify])

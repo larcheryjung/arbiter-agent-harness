@@ -64,8 +64,12 @@ class SpikeTest(Base):
         self.assertEqual(st, "APPROVED_CARDS", out)
         self.assertIn('link SPIKE-1 "E=KS-? C1=KS-? C2=KS-?"', out)
         self.assertEqual(self.h("spike", "link", "SPIKE-1", "E=KS-10 C1=KS-11")[0], "BLOCKED")  # C2 missing
+        self.assertIn("ไม่ต้องดึงการ์ดขึ้นบอร์ดเอง", out)
         st, out = self.h("spike", "link", "SPIKE-1", "E=KS-10 C1=KS-11 C2=KS-12")
         self.assertEqual(st, "SPIKE_DONE", out)
+        self.assertIn("(ดึงการ์ด KS-11, KS-12 ขึ้นบอร์ด 5335 แล้ว)", out)  # the epic stays off the board
+        board = (self.fake / "board.jsonl").read_text(encoding="utf-8")
+        self.assertEqual(json.loads(board), {"board": "5335", "issues": ["KS-11", "KS-12"]})
         files = self.git("show", "--name-only", "--format=%B", "HEAD").stdout
         self.assertIn("Arbiter-Spike: SPIKE-1", files)
         self.assertTrue(files.startswith("docs(spike): SPIKE-1 สถานะข้อมูลขาย\n"), files)

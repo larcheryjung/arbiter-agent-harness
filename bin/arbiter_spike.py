@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 
 import arbiter_core as hc
+import arbiter_board
 import arbiter_claude as ac
 import arbiter_extract as ax
 from arbiter_claude import now
@@ -19,7 +20,7 @@ SELF = f'python "{Path(__file__).resolve().parent / "arbiter.py"}" spike'
 SPIKE_RE = re.compile(r"SPIKE-(\d+)")
 TOOLS = f"{ac.BUILTIN_TOOLS},{ac.JIRA_READ_TOOLS}"  # Jira read: find existing epics/cards in KS
 DEFAULTS = {"model": "opus", "effort": "high", "repos": {}, "read_dirs": [], "max_points": 8,
-            "max_rounds_resume": 6, "budget_usd": 15, "board_cmd": ""}
+            "max_rounds_resume": 6, "budget_usd": 15}
 POINTS, TYPES = (1, 2, 3, 5, 8), ("Story", "Task")
 MODELS, EFFORTS = ("haiku", "sonnet", "opus"), ("low", "medium", "high")
 SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
@@ -291,8 +292,7 @@ def present(sp, reply="", warns=()):
     elif sp.cards_ok():
         cards = hc.read_json(sp.p("cards.json"), {})
         new_epic = isinstance(cards.get("epic"), dict)
-        board = (f"ดึงการ์ดใหม่ทุกใบขึ้นบอร์ดด้วย {sp.s['board_cmd']}" if sp.s["board_cmd"] else
-                 "ดึงการ์ดใหม่ทุกใบขึ้นบอร์ด (ถ้าทำไม่ได้ ให้บอกผู้ใช้ลากเอง)")
+        board = "(ไม่ต้องดึงการ์ดขึ้นบอร์ดเอง arbiter ทำให้ตอน link)"
         ids = (["E"] if new_epic else []) + [c["id"] for c in cards.get("cards", [])]
         hc.say("APPROVED_CARDS", f"อนุมัติการ์ดของ {sp.key} แล้ว ({sp.rel}/cards.md)",
                f"สร้างการ์ดใน Jira project KS เท่านั้น ตาม {sp.rel}/cards.md ทีละใบตามลำดับในตาราง "
@@ -449,6 +449,7 @@ def cmd_link(sp, a):
         hc.say("ERROR", f"บันทึกการ์ดแล้ว แต่ git commit โฟลเดอร์ spike ไม่ผ่าน:\n{r.stdout}{r.stderr}", STOP)
         return 1
     sha = hc.git("rev-parse", "--short", "HEAD", cwd=sp.root).strip()
+    arbiter_board.to_board([got[i] for i in need if i != "E"], sp.cfg)  # cards only: the epic is not a board card
     keys = " ".join(f"{i}={got[i]}" for i in need)
     nxt = (f"{SHOW} แล้วขยับการ์ด spike {sp.key} บน Jira ไป Done" if not sp.local else
            f"{SHOW} spike นี้ไม่มีการ์ดบน Jira ของตัวเอง")

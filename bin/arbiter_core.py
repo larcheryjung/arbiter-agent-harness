@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 BLOCK_RE = re.compile(r"```arbiter[ \t]*\r?\n(.*?)```", re.S)
 KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
@@ -172,35 +172,47 @@ def in_scope(path, patterns):
     return any(glob_re(p).fullmatch(path) for p in patterns)
 
 
-def is_doc(path, patterns):
-    """A file in docs_allow: committed on its own without a card, never part of a card's reviewed tree."""
+def is_doc(path, patterns, keep=()):
+    """A file in docs_allow: committed on its own without a card, never part of a card's reviewed tree.
+
+    `keep` is the card's scope_allow: a file the card names as its own work stays in the card even if it also
+    matches docs_allow (a card whose deliverable is a document, e.g. an OpenAPI spec under kong-workspace/)."""
     path = path.replace("\\", "/")
     if path.startswith(ARBITER_DIR) or AGENT_RULE_FILES.search(path) or BLOCKED_FILES.search(path):
+        return False
+    if any(glob_re(p).fullmatch(path) for p in keep or []):
         return False
     return any(glob_re(p).fullmatch(path) for p in patterns or [])
 
 
-def unstage_docs(root, docs, env=None):
+def worktree_changes(root):
+    """Every changed or untracked path in the working tree (outside .arbiter/), for messages only."""
+    out = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames", cwd=root)
+    return [e[3:] for e in nul_list(out) if len(e) > 3 and not e[3:].startswith(ARBITER_DIR)]
+
+
+def unstage_docs(root, docs, env=None, keep=()):
     """Reset docs_allow files in the index back to HEAD. Returns the paths that were unstaged."""
     base = head_or_empty(root)
     env = dict(env or os.environ, GIT_LITERAL_PATHSPECS="1")
     staged = nul_list(git("diff-index", "--cached", "-z", "--no-renames", "--name-only", base, cwd=root, env=env))
-    found = [f for f in staged if is_doc(f, docs)]
+    found = [f for f in staged if is_doc(f, docs, keep)]
     if found:
         args = ("reset", "-q", "HEAD") if base == "HEAD" else ("rm", "--cached", "-q", "--ignore-unmatch")
         git(*args, "--pathspec-from-file=-", "--pathspec-file-nul", cwd=root, env=env, stdin="\0".join(found))
     return found
 
 
-def code_tree(root, docs=()):
-    """Hash of the working tree as it would be committed, excluding .arbiter/ and docs_allow changes."""
+def code_tree(root, docs=(), keep=()):
+    """Hash of the working tree as it would be committed, excluding .arbiter/ and docs_allow changes
+    (except docs the card names in `keep`)."""
     idx = Path(root) / git("rev-parse", "--git-path", "arbiter-index", cwd=root).strip()
     env = dict(os.environ, GIT_INDEX_FILE=str(idx))
     has_head = git("rev-parse", "--verify", "-q", "HEAD", cwd=root, check=False).returncode == 0
     try:
         git("read-tree", "HEAD" if has_head else "--empty", cwd=root, env=env)
         git("add", "-A", "--", *CODE_ONLY, cwd=root, env=env)
-        unstage_docs(root, docs, env=env)
+        unstage_docs(root, docs, env=env, keep=keep)
         tree = git("write-tree", cwd=root, env=env).strip()
     finally:
         idx.unlink(missing_ok=True)
@@ -215,19 +227,21 @@ def diff_text(root, base, tree):
     return git("diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", base, tree, cwd=root)
 
 
-def code_drift(root, tree_a, tree_b, docs=()):
-    """Paths that differ between two trees, ignoring .arbiter/ and docs_allow files."""
+def code_drift(root, tree_a, tree_b, docs=(), keep=()):
+    """Paths that differ between two trees, ignoring .arbiter/ and docs_allow files not in `keep`."""
     out = git("diff-tree", "-r", "-z", "--no-renames", "--name-only", tree_a, tree_b, "--", *CODE_ONLY, cwd=root)
-    return [f for f in nul_list(out) if not is_doc(f, docs)]
+    return [f for f in nul_list(out) if not is_doc(f, docs, keep)]
 
 
-def same_code(root, tree_a, tree_b, docs=()):
-    return not code_drift(root, tree_a, tree_b, docs)
+def same_code(root, tree_a, tree_b, docs=(), keep=()):
+    return not code_drift(root, tree_a, tree_b, docs, keep)
 
 
 def head_or_empty(root):
     return "HEAD" if git("rev-parse", "--verify", "-q", "HEAD", cwd=root, check=False).returncode == 0 else EMPTY_TREE
 
+
+NOTICES = []  # side results (e.g. moving a card onto the board) printed inside the next say() body, shown verbatim
 
 USER_DEFAULT = {
     "ERROR": "งานหยุดอยู่ อ่านข้อความข้างบน ถ้าไม่แน่ใจสาเหตุ ให้ถาม Claude Code ตรวจ (ไม่ต้องให้ Gemini เดา)",
@@ -240,6 +254,7 @@ def say(status, body="", nxt=None, user=None):
 
     `user` is the line telling the human what to do next; it sits inside the text the agent must show verbatim."""
     user = user or USER_DEFAULT.get(status)
+    body = "\n".join([body.rstrip()] + NOTICES if body else NOTICES)
     if body:
         print(body.rstrip())
         print()

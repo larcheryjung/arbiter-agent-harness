@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arbiter_core as hc  # noqa: E402
+import arbiter_board  # noqa: E402
 import arbiter_claude as ac  # noqa: E402
 from arbiter_claude import now, render, sections  # noqa: E402
 
@@ -140,6 +141,8 @@ def cmd_spec(a):
         return 1
     card.dir.mkdir(parents=True, exist_ok=True)
     (hc.hdir(card.root) / "ACTIVE").write_text(card.key, encoding="utf-8")
+    if not card.local:  # a card worked on while it sits in the Backlog compartment vanishes from the board
+        arbiter_board.to_board([card.key], card.cfg)
     data = card.claude(card.spec_prompt(), card.spec_tools(), "spec_model", "spec")
     return spec_result(card, data)
 
@@ -199,7 +202,7 @@ def run_cmd(cmd, cwd, log, timeout):
 def run_gate(card, rnd):
     spec = card.spec_text()
     blk = hc.parse_block(spec)
-    tree, base = hc.code_tree(card.root, card.docs)
+    tree, base = hc.code_tree(card.root, card.docs, blk["scope_allow"])
     changed = hc.changed_files(card.root, base, tree)
     outside = [f for f in changed if not hc.in_scope(f, blk["scope_allow"])]
     checks = [{"name": "scope", "exit": 1 if outside or not changed else 0,
@@ -219,7 +222,7 @@ def run_gate(card, rnd):
             code = run_cmd(v["cmd"], card.root, log, card.cfg.get("verify_timeout_sec", 3600))
             checks.append({"name": v["name"], "cmd": v["cmd"], "exit": code,
                            "seconds": round(time.time() - t0, 1), "log": log.name})
-    if hc.code_tree(card.root, card.docs)[0] != tree:  # verify must test exactly the recorded tree
+    if hc.code_tree(card.root, card.docs, blk["scope_allow"])[0] != tree:  # verify must test exactly the recorded tree
         checks.append({"name": "tree-stable", "exit": 1,
                        "note": "โค้ดเปลี่ยนระหว่างรัน verify (คำสั่ง verify แก้ไฟล์ หรือมีคนแก้ระหว่างรัน)"})
     ok = all(c["exit"] == 0 for c in checks)
@@ -254,6 +257,14 @@ def cmd_review(a):
     st["gate_runs"] += 1
     ev, base = run_gate(card, st["gate_runs"])
     hc.write_json(card.p("state.json"), st)
+    if not ev["changed_files"]:  # nothing for the agent to fix by retrying: stop instead of looping
+        side = hc.worktree_changes(card.root)
+        hc.say("BLOCKED", f"ไม่พบไฟล์ที่เปลี่ยนตาม scope_allow ของ {card.key} (เทียบกับ HEAD)"
+               + ("\nไฟล์ที่เปลี่ยนแต่ไม่นับเป็นงานของการ์ด (อยู่ใน docs_allow และไม่อยู่ใน scope_allow):\n"
+                  + "\n".join(f"- {f}" for f in side) if side else ""),
+               "แสดงข้อความนี้ให้ผู้ใช้ตามตัวอักษร ห้ามแก้ git index ห้ามรัน review ซ้ำเอง แล้วหยุดรอคำสั่ง",
+               user="ถ้ายังไม่ได้ลงมือทำ ให้สั่ง Gemini ทำงานต่อ ถ้าทำแล้วแต่ยังขึ้นข้อความนี้ ให้ถาม Claude Code ตรวจ")
+        return 0
     if ev["result"] != "pass":
         bad = [f"- {c['name']}: exit {c['exit']} {c.get('note', '')} {c.get('outside_scope') or ''} "
                f"{('log: ' + card.rel + '/' + c['log']) if c.get('log') else ''}".rstrip()
@@ -333,16 +344,16 @@ def cmd_commit(a):
         hc.say("BLOCKED", "spec ไม่ตรงกับที่อนุมัติ Gate 1 หรือไม่ตรงกับตอน review",
                "แจ้งผู้ใช้ว่าต้องอนุมัติ spec ใหม่และ review ใหม่ แล้วหยุดรอคำสั่ง")
         return 1
-    tree, base = hc.code_tree(card.root, card.docs)
-    drift = hc.code_drift(card.root, ev["tree"], tree, card.docs)  # docs and .arbiter/ may move freely
+    keep = hc.parse_block(spec)["scope_allow"]
+    tree, base = hc.code_tree(card.root, card.docs, keep)
+    drift = hc.code_drift(card.root, ev["tree"], tree, card.docs, keep)  # side docs and .arbiter/ may move freely
     if drift:
         hc.say("STALE", "ไฟล์เหล่านี้เปลี่ยนหลังจาก review ผ่านแล้ว:\n" + "\n".join(f"- {f}" for f in drift),
                f"แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร ห้ามแก้ ย้อน stash หรือลบไฟล์เหล่านี้เอง แล้วรอ "
                f"ถ้าผู้ใช้สั่งให้ตรวจใหม่ ให้รัน {SELF} review {card.key}",
                user='ดูว่าไฟล์ข้างบนใครแก้ ถ้าแก้ได้ พิมพ์ "review ใหม่" เพื่อตรวจรอบใหม่ ถ้าไม่ควรแก้ ให้บอก Gemini ว่าจะจัดการอย่างไร')
         return 0
-    scope = hc.parse_block(spec)["scope_allow"]
-    outside = [f for f in hc.changed_files(card.root, base, tree) if not hc.in_scope(f, scope)]
+    outside = [f for f in hc.changed_files(card.root, base, tree) if not hc.in_scope(f, keep)]
     if outside:
         hc.say("BLOCKED", "มีไฟล์นอก scope_allow: " + ", ".join(outside), "แจ้งผู้ใช้ แล้วหยุดรอคำสั่ง")
         return 1
@@ -357,9 +368,9 @@ def cmd_commit(a):
     msg = (a.message or f"feat({card.key.lower()}): {title}") + \
         f"\n\nArbiter-Card: {card.key}\nArbiter-Tree: {tree}\nArbiter-Gate2: {ap['gate2']['at']}\n"
     hc.git("add", "-A", "--", ".", f":(exclude){hc.SPIKES_REL}", cwd=card.root)  # spikes commit themselves
-    pending_docs = hc.unstage_docs(card.root, card.docs)  # docs go in their own commit, never the card's
+    pending_docs = hc.unstage_docs(card.root, card.docs, keep=keep)  # side docs go in their own commit
     staged = hc.git("write-tree", cwd=card.root).strip()
-    if not hc.same_code(card.root, staged, tree, card.docs):  # assume-unchanged, skip-worktree, force-added...
+    if not hc.same_code(card.root, staged, tree, card.docs, keep):  # assume-unchanged, skip-worktree, force-added...
         hc.git("reset", "-q", cwd=card.root)
         hc.say("ERROR", "สิ่งที่ stage อยู่ใน git index ไม่ตรงกับโค้ดที่ review ผ่าน (มีไฟล์ที่ถูก force-add, "
                "assume-unchanged หรือ skip-worktree) จึงยกเลิก commit และ unstage แล้ว",
