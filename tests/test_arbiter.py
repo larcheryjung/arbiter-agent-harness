@@ -222,11 +222,135 @@ class ArbiterTest(Base):
                     review_resp("PASS")])
         self.assertEqual(self.h("review", "KS-1")[0], "FAIL")
         self.assertEqual(self.h("review", "KS-1")[0], "ESCALATE")
-        self.assertEqual(self.h("review", "KS-1")[0], "ESCALATE")  # stays blocked
-        st, _ = self.h("review", "KS-1", "--continue", "ทำต่อได้")
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "ESCALATE")  # stays blocked
+        self.assertIn('"ทำต่อ: <คำตัดสินของคุณ>"', out)  # the user is offered all three ways out
+        self.assertIn('"แก้ spec: <สิ่งที่จะแก้>"', out)
+        self.assertIn("park KS-1", out)
+        st, _ = self.h("review", "KS-1", "--continue", "ทำต่อได้ ใช้ inline examples")
         self.assertEqual(st, "READY_FOR_GATE2")
         self.assertIn("รอบที่ 3", self.calls()[-1]["prompt"])
         self.assertIn("review.md", self.calls()[-1]["prompt"])
+        # the user's ruling is binding for the reviewer (KS-160 looped because it never reached Claude)
+        self.assertIn("ทำต่อได้ ใช้ inline examples", self.card("decisions.md").read_text(encoding="utf-8"))
+        self.assertIn("decisions.md", self.calls()[-1]["prompt"])
+        self.assertIn("ห้ามตีกลับเรื่องที่ผู้ใช้ตัดสินแล้ว", self.calls()[-1]["prompt"])
+
+    # ---------- deadlock: SPEC_ISSUE, dispute, park ----------
+    def test_spec_issue_is_not_a_rejection_and_a_revised_spec_resets_the_budget(self):
+        self.to_gate1()
+        self.write("src/app.py", "print('a')\n")
+        issue = {"result": "===VERDICT===\nSPEC_ISSUE\n===SPEC_CHANGE===\nแก้ Approach ให้ใช้ inline\n"
+                           "===FINDINGS===\n- [MAJOR] src/app.py:1 ทำตาม Approach ไม่ได้\n===UNTESTED===\n-\n"
+                           "===LOOK_AT===\n-\n===END==="}
+        self.queue([review_resp("FAIL", "- [MAJOR] src/app.py:1 x"), issue, spec_resp()])
+        self.assertEqual(self.h("review", "KS-1")[0], "FAIL")
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "SPEC_ISSUE", out)
+        self.assertIn("แก้ Approach ให้ใช้ inline", out)
+        self.assertIn('พิมพ์ "แก้ spec ตามที่เสนอ"', out)
+        self.assertIn("answer KS-1", out)
+        self.assertEqual(json.loads(self.card("state.json").read_text(encoding="utf-8"))["rejections"], 1)
+        self.assertIn("SPEC_CHANGE", self.card("review.md").read_text(encoding="utf-8"))
+        self.assertEqual(self.h("answer", "KS-1", "แก้ spec ตามที่เสนอ")[0], "READY_FOR_GATE1")
+        self.assertIn("SPEC_CHANGE", self.calls()[-1]["prompt"])  # the spec writer is pointed at the proposal
+        self.assertEqual(self.h("review", "KS-1")[0], "BLOCKED")  # new spec needs Gate 1 again
+        self.assertEqual(self.h("approve", "KS-1", "อนุมัติ Gate 1")[0], "APPROVED_GATE1")
+        st = json.loads(self.card("state.json").read_text(encoding="utf-8"))
+        self.assertEqual((st["rejections"], st["gate_runs"]), (0, 0))
+
+    def dispute_resp(self, ruling, proposal="ทางเลือก A / B"):
+        return {"result": f"===RULING===\n{ruling}\n===REASON===\nlog แสดงว่า lint ไม่ resolve\n"
+                          f"===PROPOSAL===\n{proposal}\n===END==="}
+
+    def test_dispute_runs_the_proof_and_architect_rules(self):
+        py = Path(sys.executable).as_posix()
+        self.to_gate1()
+        self.write("src/app.py", "print('a')\n")
+        self.queue([review_resp("FAIL", "- [MAJOR] src/app.py:1 ใช้ value $ref"),
+                    self.dispute_resp("UPHOLD", "ใช้ components/examples"),
+                    self.dispute_resp("REVISE_SPEC", "แก้ AC11"), self.dispute_resp("NEED_HUMAN")])
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "FAIL")
+        self.assertIn("dispute KS-1 --claim", out)  # the builder is told how to object instead of working around
+        prove = f"{py} -c \"print('proof-out')\""
+        st, out = self.h("dispute", "KS-1", "--claim", "lint", "ไม่", "resolve", "--prove", prove)
+        self.assertEqual(st, "DISPUTE_UPHELD", out)
+        self.assertIn("ใช้ components/examples", out)
+        self.assertIn("proof-out", self.card("dispute-1-p1.log").read_text(encoding="utf-8"))
+        log = self.card("disputes.md").read_text(encoding="utf-8")
+        self.assertIn("**ข้ออ้างของ Builder (ยังไม่ยืนยัน):** lint ไม่ resolve", log)
+        self.assertIn("→ exit 0", log)
+        self.assertIn("**ชี้ขาด: UPHOLD**", log)
+        call = self.calls()[-1]
+        self.assertIn("ข้อโต้แย้งครั้งที่ 1", call["prompt"])
+        self.assertIn("ห้ามเชื่อจากข้อความ", call["prompt"])
+        self.assertNotIn("lint ไม่ resolve", call["prompt"])  # the claim reaches Claude only as a labelled file entry
+        st, out = self.h("dispute", "KS-1", "--claim", "x", "--prove", prove)
+        self.assertEqual(st, "SPEC_ISSUE", out)
+        self.assertIn("แก้ AC11", out)
+        n = len(self.calls())
+        st, out = self.h("dispute", "KS-1", "--claim", "y", "--prove", prove)
+        self.assertEqual(st, "ESCALATE", out)  # max_disputes 2: the human decides, no third Claude call
+        self.assertEqual(len(self.calls()), n)
+        self.assertEqual(json.loads(self.card("state.json").read_text(encoding="utf-8"))["rejections"], 1)
+
+    def test_dispute_need_human_offers_options(self):
+        py = Path(sys.executable).as_posix()
+        self.to_gate1()
+        self.queue([self.dispute_resp("NEED_HUMAN", "A: inline · B: externalValue")])
+        st, out = self.h("dispute", "KS-1", "--claim", "z", "--prove", f"{py} -c \"print(1)\"")
+        self.assertEqual(st, "NEEDS_DECISION", out)
+        self.assertIn("A: inline · B: externalValue", out)
+        self.assertIn("review KS-1 --continue", out)
+
+    def test_dispute_with_bad_input_runs_nothing(self):
+        self.to_gate1()
+        n = len(self.calls())
+        st, out = self.h("dispute", "KS-1", "--claim", "x", "--prove", "echo a && echo b")
+        self.assertEqual(st, "BLOCKED", out)
+        self.assertIn("ห้ามมี", out)
+        self.assertEqual(self.h("dispute", "KS-1", "--claim", "x")[0], "BLOCKED")  # no proof, no dispute
+        self.assertEqual(len(self.calls()), n)
+        self.assertFalse(self.card("disputes.md").exists())
+
+    def test_model_picked_at_card_start_is_used_for_every_call(self):
+        self.queue([spec_resp(), review_resp("PASS")])
+        st, out = self.h("spec", "KS-1", "--model", "sonnet", "--effort", "low")
+        args = self.calls()[-1]["args"]
+        self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("sonnet", "low"))
+        self.assertIn("Claude ขั้นรีวิว: sonnet · low (คุณสั่งตอนเริ่มการ์ด)", out)
+        self.h("approve", "KS-1", "อนุมัติ Gate 1")
+        self.write("src/app.py", "print('a')\n")
+        self.h("review", "KS-1")
+        args = self.calls()[-1]["args"]
+        self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("sonnet", "low"))
+
+    def test_default_model_is_opus_high_everywhere(self):
+        self.queue([spec_resp(), review_resp("PASS")])
+        st, out = self.h("spec", "KS-1")
+        self.assertIn("Claude ขั้นรีวิว: opus · high (ค่าตั้งต้น)", out)
+        self.h("approve", "KS-1", "อนุมัติ Gate 1")
+        self.write("src/app.py", "print('a')\n")
+        self.h("review", "KS-1")
+        for c in self.calls():
+            self.assertEqual((c["args"][c["args"].index("--model") + 1], c["args"][c["args"].index("--effort") + 1]),
+                             ("opus", "high"))
+
+    def test_park_and_unpark(self):
+        self.to_gate1()
+        st, out = self.h("park", "KS-1", "ไปทำเรื่องด่วนก่อน")
+        self.assertEqual(st, "PARKED", out)
+        self.assertFalse((self.repo / ".arbiter" / "ACTIVE").exists())
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "BLOCKED")
+        self.assertIn("ถูกพักไว้", out)
+        self.assertIn("unpark KS-1", self.h("status", "KS-1")[1])
+        self.assertEqual(self.h("unpark", "KS-1", "ทำการ์ด KS-1 ต่อ")[0], "UNPARKED")
+        self.assertEqual((self.repo / ".arbiter" / "ACTIVE").read_text(encoding="utf-8"), "KS-1")
+        decisions = self.card("decisions.md").read_text(encoding="utf-8")
+        self.assertIn("ไปทำเรื่องด่วนก่อน", decisions)
+        self.assertIn("ทำการ์ด KS-1 ต่อ", decisions)
 
     def test_commit_refuses_code_changed_after_review(self):
         self.to_gate2()

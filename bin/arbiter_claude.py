@@ -88,10 +88,11 @@ def call(root, ccfg, prompt, tools, model, *, log, mode, key, resume=None, add_d
     """Run one read-only `claude -p`, log it to `log` (sessions.jsonl) and return the result event (never raises)."""
     override = os.environ.get("ARBITER_CLAUDE_CMD")
     cmd = override.split("|") if override else [shutil.which("claude") or "claude"]
-    args = cmd + ["-p", "--output-format", "stream-json", "--verbose",
-                  "--model", os.environ.get("ARBITER_MODEL") or model]
-    if effort or ccfg.get("effort"):
-        args += ["--effort", effort or ccfg["effort"]]
+    model = os.environ.get("ARBITER_MODEL") or model
+    effort = effort or ccfg.get("effort")
+    args = cmd + ["-p", "--output-format", "stream-json", "--verbose", "--model", model]
+    if effort:
+        args += ["--effort", effort]
     if resume:
         args += ["--resume", resume]
     for d in add_dirs:
@@ -110,7 +111,8 @@ def call(root, ccfg, prompt, tools, model, *, log, mode, key, resume=None, add_d
                             and str(t["input"].get("issue_key", "")).upper() == key
                             for t in data["tool_calls"])
     with log.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"at": now(), "mode": mode, "session_id": data.get("session_id"),
+        fh.write(json.dumps({"at": now(), "mode": mode, "model": model, "effort": effort,
+                             "session_id": data.get("session_id"),
                              "resumed": resume, "is_error": bool(data.get("is_error")),
                              "cost_usd": data.get("total_cost_usd"),
                              "denials": len(data.get("permission_denials") or []),

@@ -78,9 +78,33 @@ class SpikeTest(Base):
         self.assertEqual(self.git("status", "--porcelain").stdout.strip(), "")
         # the card created from the spike: /feature's Claude is pointed at the approved plan, not a retelling
         self.queue([spec_resp(tools=[{"name": "mcp__jira__jira_get_issue", "input": {"issue_key": "KS-11"}}])])
-        self.h("spec", "KS-11")
+        st, gate1 = self.h("spec", "KS-11")
         self.assertIn(".arbiter/spikes/SPIKE-1/solution.md", self.calls()[-1]["prompt"])
         self.assertIn("`C1`", self.calls()[-1]["prompt"])
+        # Kong (option B): the spec is always drafted with opus · high; the card's recommendation (sonnet · medium)
+        # is announced on the Gate 1 page and used for review unless he objects in the approval
+        self.assertEqual(self.model_of(), ("opus", "high"))
+        row = json.loads(self.card("sessions.jsonl", "KS-11").read_text(encoding="utf-8").splitlines()[-1])
+        self.assertEqual((row["model"], row["effort"]), ("opus", "high"))
+        self.assertIn("Claude ขั้นรีวิว: sonnet · medium (ตามที่การ์ดจาก spike แนะนำ)", gate1)
+        self.assertLess(gate1.index("Claude ขั้นรีวิว"), gate1.index("STATUS:"))
+        self.assertEqual(self.h("approve", "KS-11", "อนุมัติ Gate 1")[0], "APPROVED_GATE1")
+        self.write("src/app.py", "print('c1')\n")
+        self.queue([review_resp("PASS")])
+        self.assertEqual(self.h("review", "KS-11")[0], "READY_FOR_GATE2")
+        self.assertEqual(self.model_of(), ("sonnet", "medium"))  # no objection = the recommendation
+        # an objection inside the approval wins
+        self.queue([spec_resp(tools=[{"name": "mcp__jira__jira_get_issue", "input": {"issue_key": "KS-12"}}]),
+                    review_resp("PASS")])
+        self.h("spec", "KS-12")
+        st, out = self.h("approve", "KS-12", "อนุมัติ Gate 1 ใช้ opus")
+        self.assertIn("Claude ขั้นรีวิว: opus · high (คุณสั่งตอนอนุมัติ Gate 1)", out)
+        self.h("review", "KS-12")
+        self.assertEqual(self.model_of(), ("opus", "high"))
+
+    def model_of(self, i=-1):
+        args = self.calls()[i]["args"]
+        return args[args.index("--model") + 1], args[args.index("--effort") + 1]
 
     def test_invalid_cards_go_back_to_claude_once_then_error(self):
         bad = cards_resp([card("C1", type="Task", points=13, scope_hint=["nope/**"], depends=["C9"])])

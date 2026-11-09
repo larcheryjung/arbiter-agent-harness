@@ -7,10 +7,10 @@ Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แ
 
 ## สถานะ (2026-11-09)
 
-- **v0.3.2** · เทสต์ 47 ข้อ: `python -m unittest discover -s tests`
+- **v0.3.3** · เทสต์ 54 ข้อ: `python -m unittest discover -s tests`
 - Pilot `/feature`: `C:\local-code-repo\hbs3\epolicy` (branch `dev`) ติดตั้ง v0.2.0 แล้ว · การ์ดจริง 1/10 (KS-118 → `e3a4e5a`, ค่า Claude $6.24)
 - Pilot `/spike`: `C:\local-code-repo\hbs3\hbs-strangler-service` (ติดตั้ง 0.3.1) · SPIKE-1 จบแล้ว → KS-160, KS-166 (Policy Status API spec ให้เว็บ TA) · KS-160 กำลังทำด้วย /feature
-- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น, ดึงการ์ด KS ขึ้นบอร์ดเอง (`spike link`, `spec KS-xx`)
+- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น, ดึงการ์ด KS ขึ้นบอร์ดเอง (`spike link`, `spec KS-xx`), ปลด deadlock (`decisions.md`, `SPEC_ISSUE`, `dispute`, `park`)
 - ยังไม่มี: `/poc`, `/quick`, Ops, pre-push, hook กัน HBS DB/prod, pack `jira-ks`
 
 ## Roadmap ย่อ
@@ -33,7 +33,7 @@ Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แ
 ## โครง repo
 
 ```
-bin/arbiter.py           CLI /feature: spec [--local] | answer | approve | review [--continue] | commit | status
+bin/arbiter.py           CLI /feature: spec [--local] | answer | approve | review [--continue] | dispute | park | unpark | commit | status
 bin/arbiter_spike.py     CLI /spike (arbiter.py spike ...): new | answer | approve | cards | link | status
 bin/arbiter_claude.py    เรียก claude -p (อ่านอย่างเดียว), template, stream-json, ภาษา
 bin/arbiter_core.py      git, scope, config จาก HEAD, say() STATUS/NEXT

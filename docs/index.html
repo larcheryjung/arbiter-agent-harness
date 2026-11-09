@@ -114,7 +114,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
 <div class="wrap">
 <nav class="toc" aria-label="หมวด">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.2 · อัปเดต 9 พ.ย. 2026</div>
+  <div class="ver">v0.3.3 · อัปเดต 9 พ.ย. 2026</div>
   <a href="#now">สถานะปัจจุบัน</a>
   <a href="#use">วิธีใช้</a>
   <a href="#how">ทำงานอย่างไร</a>
@@ -131,9 +131,9 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
   <p class="lede">harness ตัวที่ 5 ของคุณก้อง ใช้แทน AeroHarness: Gemini ยังเรียก Claude เองอัตโนมัติเหมือนเดิม แต่การตัดสินว่างานผ่านหรือไม่ ย้ายจาก “AI รายงานเอง” ไปเป็น “script ตัดสินจากหลักฐาน” และคนกดอนุมัติแค่ Gate 1 กับ Gate 2</p>
 
   <div class="grid g4" style="margin-top:18px">
-    <div class="card stat"><b>v0.3.2</b><span>การ์ดเอกสาร + ขึ้นบอร์ดเอง · 9 พ.ย.</span></div>
+    <div class="card stat"><b>v0.3.3</b><span>ปลด deadlock: dispute / SPEC_ISSUE / park · 9 พ.ย.</span></div>
     <div class="card stat"><b>1 / 10</b><span>การ์ดจริงในช่วง pilot (KS-118)</span></div>
-    <div class="card stat"><b>47</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
+    <div class="card stat"><b>54</b><span>เทสต์อัตโนมัติ ผ่านทั้งหมด</span></div>
     <div class="card stat"><b>$6.24</b><span>ค่า Claude ของ KS-118 ทั้งการ์ด</span></div>
   </div>
 
@@ -145,6 +145,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line)
     <tr><td>Safety floor: git pre-commit</td><td><span class="pill p-done">ทำงาน</span></td><td>scope, secret, Gate 1/2, ไฟล์ต้องห้าม, เอกสารล้วน commit ได้เอง</td></tr>
     <tr><td>Jira เฉพาะ KS</td><td><span class="pill p-done">ทำงาน</span></td><td>3 ชั้น: credential, <code>--jira-projects-filter KS</code>, <code>~/.claude/hooks/jira-guard.py</code> (ระดับผู้ใช้ ไม่ได้อยู่ใน repo นี้)</td></tr>
     <tr><td><code>/spike</code></td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td>requirement ใหญ่ → คุยหลายรอบ → อนุมัติแผน → ซอยการ์ด (เครื่องตรวจ) → อนุมัติการ์ด → Gemini สร้างใน KS → <code>link</code> · ไม่มีโค้ด · ทดสอบกับ Claude จริงใน repo ทดลองแล้ว</td></tr>
+    <tr><td>ปลด deadlock</td><td><span class="pill p-done">พร้อม (ยังไม่ได้ใช้จริง)</span></td><td><code>decisions.md</code> ผูก reviewer · <code>SPEC_ISSUE</code> · <code>dispute --claim --prove</code> → UPHOLD / REVISE_SPEC / NEED_HUMAN · <code>park</code> / <code>unpark</code> · ทุกการแก้ spec ต้องผ่าน Gate 1 ใหม่</td></tr>
     <tr><td><code>/poc</code>, <code>/quick</code>, Ops</td><td><span class="pill p-todo">ยังไม่ทำ</span></td><td>ดูหมวด Roadmap</td></tr>
   </table></div>
 
@@ -331,6 +332,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
     <tr><td>v0.3.0</td><td>9 พ.ย.</td><td><code>/spike</code> (แผน → การ์ด → link), ตรวจ cards.json ด้วยกฎ, แปลง .docx/.xlsx, <code>spike.read_dirs</code>, /feature อ่านแผนของ spike เอง, แยก <code>arbiter_claude.py</code>, 41 เทสต์</td></tr>
     <tr><td>v0.3.1</td><td>9 พ.ย.</td><td>spike: Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน) หน้าการ์ดแจ้งเมื่อไม่มี Story</td></tr>
     <tr><td>v0.3.2</td><td>9 พ.ย.</td><td>ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> นับเป็นงานของการ์ดแม้อยู่ใน <code>docs_allow</code> (KS-160) · review ที่ไม่มีไฟล์เปลี่ยนเป็น BLOCKED ไม่ใช่ FAIL · arbiter ดึงการ์ด KS ขึ้นบอร์ดเองตอน <code>spike link</code> และ <code>spec KS-xx</code> (<code>bin/arbiter_board.py</code>) · 47 เทสต์</td></tr>
+    <tr><td>v0.3.3</td><td>9 พ.ย.</td><td>ปลด deadlock (KS-160): คำตัดสินของผู้ใช้ลง <code>decisions.md</code> และผูก reviewer · reviewer ตอบ <code>SPEC_ISSUE</code> ได้ (ไม่นับเป็นรอบตีกลับ) · <code>arbiter dispute</code> Builder แย้งด้วยคำสั่งพิสูจน์ที่ arbiter รันเอง แล้ว Architect ชี้ขาด UPHOLD / REVISE_SPEC / NEED_HUMAN (สูงสุด 2 ครั้ง) · <code>park</code> / <code>unpark</code> · หน้า ESCALATE มี 3 ทางออก · spec ใหม่รีเซ็ตงบรอบ · model: ร่าง spec ด้วย opus · high เสมอ ขั้นรีวิว/dispute ใช้ที่การ์ดจาก spike แนะนำ โดยแจ้งในหน้า Gate 1 ถ้าคุณก้องไม่ทักในคำอนุมัติก็ใช้ตามนั้น (ทักได้ เช่น "อนุมัติ Gate 1 ใช้ opus high") สั่งเองตอนเริ่มการ์ดได้ด้วย <code>spec --model --effort</code> · บันทึก model ใน sessions.jsonl · workflow ห้ามเลี่ยงเครื่องตรวจและห้ามแต่งข้อมูล · 54 เทสต์</td></tr>
   </table></div>
 
   <h2>บทเรียนจาก KS-118 (การ์ดจริงใบแรก)</h2>
@@ -413,7 +415,8 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
     <tr><td><code>docs_allow</code></td><td><code>[]</code></td><td>glob ของเอกสารที่ commit ได้โดยไม่มีการ์ด (ไฟล์ที่การ์ดระบุใน <code>scope_allow</code> ยังเป็นงานของการ์ด)</td></tr>
     <tr><td><code>verify</code></td><td>-</td><td><code>[{name, cmd}]</code> เทสต์ชุดหลักของโปรเจกต์</td></tr>
     <tr><td><code>verify_timeout_sec</code></td><td>3600</td><td></td></tr>
-    <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE</td></tr>
+    <tr><td><code>max_rejections</code> / <code>max_gate_runs</code></td><td>2 / 6</td><td>เกินแล้ว ESCALATE (อนุมัติ spec ใหม่แล้วนับใหม่)</td></tr>
+    <tr><td><code>max_disputes</code></td><td>2</td><td>จำนวน <code>dispute</code> ต่อการ์ด เกินแล้ว ESCALATE</td></tr>
     <tr><td><code>claude.*</code></td><td>opus, high, 1200, require_jira true</td><td><code>spec_model</code>, <code>review_model</code>, <code>effort</code>, <code>timeout_sec</code>, <code>require_jira</code></td></tr>
     <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code> {ชื่อ: path} ที่การ์ดเลือกได้, <code>read_dirs</code> repo อื่นที่ Claude อ่าน, <code>max_points</code>, <code>max_rounds_resume</code> (เกินแล้วเริ่ม session ใหม่จากไฟล์), <code>budget_usd</code> (เตือน)</td></tr>
     <tr><td><code>jira_board_id</code></td><td>5335</td><td>บอร์ดที่ arbiter ดึงการ์ด KS ขึ้นไป (ส่งได้เฉพาะ KS-n) credential จาก env <code>JIRA_*</code> หรือ Jira MCP ใน <code>~/.claude.json</code> ถ้าไม่สำเร็จจะบอกให้ลากเอง ไม่บล็อกงาน</td></tr>
@@ -434,7 +437,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.1"</code></pre>
   <p>ตรวจย้อนหลังสิ่งที่ Gemini ทำ: <code>~/.gemini/antigravity/brain/&lt;id&gt;/.system_generated/logs/transcript_full.jsonl</code></p>
 </section>
 
-<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.2) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
+<footer>Arbiter Handbook · ข้อมูล ณ 9 พ.ย. 2026 (v0.3.3) · ต้นทางของการตัดสินใจคือ DIRECTION.md</footer>
 </main>
 </div>
 <script>

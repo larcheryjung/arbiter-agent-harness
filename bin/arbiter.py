@@ -24,8 +24,18 @@ SELF = f'python "{Path(__file__).resolve()}"'
 SPEC_TOOLS = f"{ac.BUILTIN_TOOLS},{ac.JIRA_READ_TOOLS}"
 LOCAL_SPEC_TOOLS = ac.BUILTIN_TOOLS  # LOCAL cards have no Jira card, so no Jira access at all
 REVIEW_TOOLS = ac.BUILTIN_TOOLS
-USER_ESCALATE = 'ตัดสินว่าจะให้ทำต่อหรือหยุด ถ้าให้ทำต่อ พิมพ์ "ทำต่อ" พร้อมแนวทางที่ต้องการ'
+USER_ESCALATE = ('เลือกหนึ่งทาง: "ทำต่อ: <คำตัดสินของคุณ>" (reviewer ต้องยึดคำตัดสินนี้) · '
+                 '"แก้ spec: <สิ่งที่จะแก้>" (แล้วอนุมัติ Gate 1 ใหม่) · "พักการ์ด"')
 SHELL_META = re.compile(r"[|&;<>`]")
+SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
+MAX_PROVE = 3
+
+
+def decide_next(key):
+    """NEXT for every page where the user must rule: continue with a binding decision, revise the spec, or park."""
+    return (f'{SHOW} หยุดแก้เอง แล้วรอผู้ใช้ตัดสิน: ถ้าให้ทำต่อ ให้รัน {SELF} review {key} --continue "<ข้อความของผู้ใช้>" · '
+            f'ถ้าให้แก้ spec ให้รัน {SELF} answer {key} "<ข้อความของผู้ใช้ ห้ามแก้>" · '
+            f'ถ้าให้พักการ์ด ให้รัน {SELF} park {key} "<ข้อความของผู้ใช้>"')
 
 
 class Card:
@@ -66,10 +76,61 @@ class Card:
             texts += re.split(r"^## .*$", self.p("answers.md").read_text(encoding="utf-8"), flags=re.M)
         return ac.lang_of(texts, self.cfg.get("language", "th"))
 
-    def claude(self, prompt, tools, model_key, mode, resume=None):
+    def reco(self):
+        """(model, effort) the approved spike card recommends for this card, else (None, None). Shown, never applied."""
+        origin = hc.spike_origin(self.root, self.key)
+        if not origin:
+            return None, None
+        cards = hc.read_json(self.root / origin[0] / "cards.json", {}).get("cards", [])
+        c = next((c for c in cards if str(c.get("id")) == origin[1]), {})
+        return c.get("model"), c.get("effort")
+
+    def review_pick(self, said=""):
+        """(model, effort, source) for review/dispute, decided at Gate 1. The user's words win (in the Gate 1
+        approval, or at card start), else the spike card's recommendation (shown on the Gate 1 page), else config."""
         c = self.cfg.get("claude", {})
-        return ac.call(self.root, c, prompt, tools, c.get(model_key, "opus"), log=self.p("sessions.jsonl"),
-                       mode=mode, key=self.key, resume=resume)
+        m = re.search(r"\b(haiku|sonnet|opus)\b", said, re.I)
+        e = re.search(r"\b(low|medium|high|xhigh|max)\b", said, re.I)
+        if m or e:
+            return ((m.group(1).lower() if m else c.get("review_model", "opus")),
+                    (e.group(1).lower() if e else c.get("effort", "high")), "คุณสั่งตอนอนุมัติ Gate 1")
+        start = hc.read_json(self.p("model.json"), {})
+        if start:
+            return (start.get("model") or c.get("review_model", "opus"), start.get("effort") or c.get("effort", "high"),
+                    "คุณสั่งตอนเริ่มการ์ด")
+        rm, re_ = self.reco()
+        if rm:
+            return rm, re_ or c.get("effort", "high"), "ตามที่การ์ดจาก spike แนะนำ"
+        return c.get("review_model", "opus"), c.get("effort", "high"), "ค่าตั้งต้น"
+
+    def claude(self, prompt, tools, model_key, mode, resume=None):
+        # spec/answer: opus · high (config) unless the user picked at card start. review/dispute: fixed at Gate 1.
+        c = self.cfg.get("claude", {})
+        pick = hc.read_json(self.p("model.json"), {})
+        if mode in ("review", "dispute"):
+            pick = hc.read_json(self.p("approvals.json"), {}).get("gate1", {}).get("review_model") or pick
+        return ac.call(self.root, c, prompt, tools, pick.get("model") or c.get(model_key, "opus"),
+                       log=self.p("sessions.jsonl"), mode=mode, key=self.key, resume=resume,
+                       effort=pick.get("effort"))
+
+    def decide(self, source, text):
+        """Record the user's ruling, verbatim. The reviewer and the dispute Architect must follow decisions.md."""
+        with self.p("decisions.md").open("a", encoding="utf-8") as fh:
+            fh.write(f"\n## {now()} ({source})\n{text}\n")
+
+    def ready(self):
+        """True if the card may be worked on (not parked, Gate 1 approved, spec unchanged); else tells the agent why."""
+        ap = hc.read_json(self.p("approvals.json"), {})
+        if self.p("parked.json").exists():
+            hc.say("BLOCKED", f"การ์ด {self.key} ถูกพักไว้", "แจ้งผู้ใช้ แล้วหยุดรอคำสั่ง",
+                   user=f'ถ้าจะทำต่อ พิมพ์ "ทำการ์ด {self.key} ต่อ"')
+        elif "gate1" not in ap:
+            hc.say("BLOCKED", f"{self.key} ยังไม่ผ่าน Gate 1", "แจ้งผู้ใช้ แล้วหยุดรอคำสั่ง")
+        elif hc.sha256(self.p("spec.md")) != ap["gate1"]["spec_sha256"]:
+            hc.say("BLOCKED", "spec.md ถูกแก้หลังอนุมัติ Gate 1", "แจ้งผู้ใช้ว่าต้องอนุมัติ spec ใหม่ แล้วหยุดรอคำสั่ง")
+        else:
+            return True
+        return False
 
     def require_jira(self):
         return not self.local and self.cfg.get("claude", {}).get("require_jira", True)
@@ -105,6 +166,9 @@ def spec_result(card, data, fresh=True):
         return 0
     card.p("questions.md").unlink(missing_ok=True)
     warn = "" if hc.parse_block(s["SPEC"])["scope_allow"] else "\n(คำเตือน: spec ไม่มี scope_allow)"
+    rm, re_, src = card.review_pick()
+    warn += (f"\n\nClaude ขั้นรีวิว: {rm} · {re_} ({src}) ถ้าจะใช้ model อื่น ให้บอกพร้อมคำอนุมัติ "
+             f'เช่น "อนุมัติ Gate 1 ใช้ opus high"')
     hc.say("READY_FOR_GATE1", f"SPEC {card.key} ({card.rel}/spec.md):\n\n{s['SPEC']}{warn}",
            f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
            f'{SELF} approve {card.key} "<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>" '
@@ -141,6 +205,8 @@ def cmd_spec(a):
         return 1
     card.dir.mkdir(parents=True, exist_ok=True)
     (hc.hdir(card.root) / "ACTIVE").write_text(card.key, encoding="utf-8")
+    if a.model or a.effort:  # the user's own choice at card start: used for every Claude call of this card
+        hc.write_json(card.p("model.json"), {"model": a.model, "effort": a.effort, "at": now()})
     if not card.local:  # a card worked on while it sits in the Backlog compartment vanishes from the board
         arbiter_board.to_board([card.key], card.cfg)
     data = card.claude(card.spec_prompt(), card.spec_tools(), "spec_model", "spec")
@@ -175,8 +241,16 @@ def cmd_approve(a):
         hc.say("BLOCKED", "ยังไม่มี spec หรือยังมีคำถามค้าง", f"ใช้ {SELF} status {card.key}")
         return 1
     ap = hc.read_json(card.p("approvals.json"), {})
-    ap["gate1"] = {"at": now(), "text": " ".join(a.text), "spec_sha256": hc.sha256(card.p("spec.md"))}
+    said = " ".join(a.text)
+    rm, re_, src = card.review_pick(said)  # no objection in the approval = the model shown on the Gate 1 page
+    ap["gate1"] = {"at": now(), "text": said, "spec_sha256": hc.sha256(card.p("spec.md")),
+                   "review_model": {"model": rm, "effort": re_, "source": src}}
     hc.write_json(card.p("approvals.json"), ap)
+    hc.NOTICES.append(f"Claude ขั้นรีวิว: {rm} · {re_} ({src})")
+    st = hc.read_json(card.p("state.json"), None)
+    if st:  # a spec revised mid-card is a new contract: the old rejection and gate-run budget no longer apply
+        st["rejections"], st["gate_runs"] = 0, 0
+        hc.write_json(card.p("state.json"), st)
     (hc.hdir(card.root) / "ACTIVE").write_text(card.key, encoding="utf-8")
     scope = "\n".join(f"  - {s}" for s in hc.parse_block(card.spec_text())["scope_allow"])
     hc.say("APPROVED_GATE1", f"scope_allow:\n{scope}",
@@ -236,23 +310,18 @@ def run_gate(card, rnd):
 
 def cmd_review(a):
     card = Card(a.key)
-    ap = hc.read_json(card.p("approvals.json"), {})
-    if "gate1" not in ap:
-        hc.say("BLOCKED", f"{card.key} ยังไม่ผ่าน Gate 1", "แจ้งผู้ใช้ แล้วหยุดรอคำสั่ง")
-        return 1
-    if hc.sha256(card.p("spec.md")) != ap["gate1"]["spec_sha256"]:
-        hc.say("BLOCKED", "spec.md ถูกแก้หลังอนุมัติ Gate 1", "แจ้งผู้ใช้ว่าต้องอนุมัติ spec ใหม่ แล้วหยุดรอคำสั่ง")
+    if not card.ready():
         return 1
     st = hc.read_json(card.p("state.json"), {"gate_runs": 0, "review_rounds": 0, "rejections": 0})
     if a.cont:
         st["rejections"], st["gate_runs"] = 0, 0
         st.setdefault("overrides", []).append({"at": now(), "text": " ".join(a.cont)})
+        card.decide("ทำต่อ", " ".join(a.cont))
     max_rej, max_runs = card.cfg.get("max_rejections", 2), card.cfg.get("max_gate_runs", 6)
     if st["rejections"] >= max_rej or st["gate_runs"] >= max_runs:
         hc.write_json(card.p("state.json"), st)
         hc.say("ESCALATE", f"ครบจำนวนรอบแล้ว ดู {card.rel}/review.md และ evidence.json",
-               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน '
-               f'{SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"', user=USER_ESCALATE)
+               decide_next(card.key), user=USER_ESCALATE)
         return 0
     st["gate_runs"] += 1
     ev, base = run_gate(card, st["gate_runs"])
@@ -285,19 +354,26 @@ def cmd_review(a):
                               LANG_RULE=card.lang_rule()), REVIEW_TOOLS, "review_model", "review")
     s = sections(data.get("result"))
     verdict = (s.get("VERDICT", "").split() or [""])[0].upper()
-    if data.get("is_error") or verdict not in ("PASS", "FAIL"):
+    if data.get("is_error") or verdict not in ("PASS", "FAIL", "SPEC_ISSUE"):
         st["review_rounds"] -= 1
         hc.write_json(card.p("state.json"), st)
         card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
         hc.say("ERROR", f"Claude review ไม่ได้ส่งผลตามรูปแบบ ดู {card.rel}/last-claude-output.txt",
                "แสดงข้อความนี้ให้ผู้ใช้ แล้วหยุดรอคำสั่ง")
         return 1
-    block = (f"\n## รอบ {rnd}: {verdict} ({now()}, tree {ev['tree'][:10]})\n{s.get('FINDINGS', '')}\n\n"
+    change = s.get("SPEC_CHANGE", "") if verdict == "SPEC_ISSUE" else ""
+    block = (f"\n## รอบ {rnd}: {verdict} ({now()}, tree {ev['tree'][:10]})\n"
+             + (f"**SPEC_CHANGE (ข้อเสนอแก้ spec):**\n{change}\n\n" if change else "")
+             + f"{s.get('FINDINGS', '')}\n\n"
              f"**ยังไม่ได้ทดสอบ:** {s.get('UNTESTED', '-')}\n\n**จุดที่ควรดู:** {s.get('LOOK_AT', '-')}\n")
     with card.p("review.md").open("a", encoding="utf-8") as fh:
         fh.write(block)
     ev["review"] = {"round": rnd, "verdict": verdict, "session_id": data.get("session_id")}
     hc.write_json(card.p("evidence.json"), ev)
+    if verdict == "SPEC_ISSUE":  # the spec is the problem: fixing the work cannot end this, so it is not a rejection
+        hc.write_json(card.p("state.json"), st)
+        say_spec_issue(card, f"REVIEW รอบ {rnd}: ปัญหาอยู่ที่ spec ไม่ใช่ที่งาน", change, s.get("FINDINGS", ""))
+        return 0
     if verdict == "PASS":
         page = gate2_page(card, ev, s)
         card.p("gate2.md").write_text(page, encoding="utf-8")
@@ -312,11 +388,105 @@ def cmd_review(a):
     hc.write_json(card.p("state.json"), st)
     if st["rejections"] >= max_rej:
         hc.say("ESCALATE", f"Reviewer ตีกลับครบ {max_rej} รอบ:\n{s.get('FINDINGS', '')}",
-               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร หยุดแก้เอง ให้ผู้ใช้ตัดสิน ถ้าผู้ใช้ให้ทำต่อ ให้รัน '
-               f'{SELF} review {card.key} --continue "<ข้อความของผู้ใช้>"', user=USER_ESCALATE)
+               decide_next(card.key), user=USER_ESCALATE)
     else:
         hc.say("FAIL", f"REVIEW รอบ {rnd} ไม่ผ่าน:\n{s.get('FINDINGS', '')}",
-               f"แก้ตาม findings ข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) แล้วรัน {SELF} review {card.key}")
+               f"แก้ตาม findings ข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) แล้วรัน {SELF} review {card.key} "
+               f"ถ้าทำตาม finding หรือ spec แล้วขัดกับพฤติกรรมจริงของเครื่องมือ ห้ามหาทางเลี่ยง ให้รัน "
+               f'{SELF} dispute {card.key} --claim "<ข้ออ้าง 1 บรรทัด>" --prove "<คำสั่งที่พิสูจน์>"')
+    return 0
+
+
+def say_spec_issue(card, title, proposal, detail):
+    hc.say("SPEC_ISSUE", f"{title}\n\nข้อเสนอแก้ spec:\n{proposal or '-'}\n\nรายละเอียด:\n{detail or '-'}",
+           decide_next(card.key),
+           user='ถ้าเห็นด้วย พิมพ์ "แก้ spec ตามที่เสนอ" (หรือบอกว่าจะแก้อย่างไร) แล้วอนุมัติ Gate 1 ใหม่ · '
+                'ถ้าไม่เห็นด้วย พิมพ์ "ทำต่อ: <คำตัดสินของคุณ>" · หรือ "พักการ์ด"')
+
+
+def cmd_dispute(a):
+    card = Card(a.key)
+    if not card.ready():
+        return 1
+    st = hc.read_json(card.p("state.json"), {"gate_runs": 0, "review_rounds": 0, "rejections": 0})
+    n, max_d = st.get("disputes", 0), card.cfg.get("max_disputes", 2)
+    if n >= max_d:
+        hc.say("ESCALATE", f"แย้งผลตรวจครบ {max_d} ครั้งแล้ว ดู {card.rel}/disputes.md และ review.md",
+               decide_next(card.key), user=USER_ESCALATE)
+        return 0
+    claim, proves = " ".join(a.claim or []).strip(), a.prove or []
+    errs = (["ไม่มีข้ออ้าง (--claim)"] if not claim else []) + \
+        ([f"ต้องมีคำสั่งพิสูจน์ 1–{MAX_PROVE} คำสั่ง (--prove)"] if not 1 <= len(proves) <= MAX_PROVE else []) + \
+        [f"คำสั่งพิสูจน์ห้ามมี | & ; < > ` : {p}" for p in proves if SHELL_META.search(p)]
+    if errs:
+        hc.say("BLOCKED", "dispute ไม่ถูกต้อง:\n" + "\n".join(f"- {e}" for e in errs),
+               f'แก้แล้วรัน {SELF} dispute {card.key} --claim "<ข้ออ้าง 1 บรรทัด>" --prove "<คำสั่ง>"')
+        return 1
+    n += 1
+    keep = hc.parse_block(card.spec_text())["scope_allow"]
+    before = hc.code_tree(card.root, card.docs, keep)[0]
+    rows = []
+    for i, cmd in enumerate(proves, 1):  # arbiter runs the proof itself: the Architect reads output, not prose
+        log = card.p(f"dispute-{n}-p{i}.log")
+        code = run_cmd(cmd, card.root, log, card.cfg.get("verify_timeout_sec", 3600))
+        rows.append(f"- `{cmd}` → exit {code} (log: `{card.rel}/{log.name}`)")
+    moved = hc.code_tree(card.root, card.docs, keep)[0] != before
+    entry = (f"\n## ข้อโต้แย้งครั้งที่ {n} ({now()})\n**ข้ออ้างของ Builder (ยังไม่ยืนยัน):** {claim}\n\n"
+             f"**คำสั่งพิสูจน์ที่ arbiter รัน:**\n" + "\n".join(rows) + "\n"
+             + ("\n⚠ คำสั่งพิสูจน์แก้ไฟล์งานระหว่างรัน\n" if moved else ""))
+    with card.p("disputes.md").open("a", encoding="utf-8") as fh:
+        fh.write(entry)
+    st["disputes"] = n
+    hc.write_json(card.p("state.json"), st)
+    data = card.claude(render("dispute.md", KEY=card.key, CARD_DIR=card.rel, N=n, LANG_RULE=card.lang_rule()),
+                       REVIEW_TOOLS, "review_model", "dispute")
+    s = sections(data.get("result"))
+    ruling = (s.get("RULING", "").split() or [""])[0].upper()
+    if data.get("is_error") or ruling not in ("UPHOLD", "REVISE_SPEC", "NEED_HUMAN"):
+        st["disputes"] = n - 1  # a broken call must not eat the dispute budget
+        hc.write_json(card.p("state.json"), st)
+        card.p("last-claude-output.txt").write_text(str(data.get("result")), encoding="utf-8")
+        hc.say("ERROR", f"Claude ชี้ขาดไม่ได้ส่งผลตามรูปแบบ ดู {card.rel}/last-claude-output.txt",
+               "แสดงข้อความนี้ให้ผู้ใช้ แล้วหยุดรอคำสั่ง")
+        return 1
+    reason, proposal = s.get("REASON", "-"), s.get("PROPOSAL", "-")
+    with card.p("disputes.md").open("a", encoding="utf-8") as fh:
+        fh.write(f"\n**ชี้ขาด: {ruling}**\n\n{reason}\n\n**ข้อเสนอ:**\n{proposal}\n")
+    head = f"ข้อโต้แย้งครั้งที่ {n}: {claim} (ยังไม่ยืนยัน)\n" + "\n".join(rows) + f"\n\nชี้ขาด: {ruling}\n{reason}"
+    if ruling == "UPHOLD":
+        hc.say("DISPUTE_UPHELD", f"{head}\n\nทางที่ทำตามได้:\n{proposal}",
+               f"{SHOW} แล้วแก้งานตามผลตรวจเดิมและทางข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) "
+               f"แล้วรัน {SELF} review {card.key}",
+               user='ไม่ต้องทำอะไร Gemini จะแก้ต่อ · ถ้าไม่เห็นด้วยกับผลชี้ขาด พิมพ์ "ทำต่อ: <คำตัดสิน>" หรือ "แก้ spec: ..."')
+    elif ruling == "REVISE_SPEC":
+        say_spec_issue(card, f"ข้อโต้แย้งครั้งที่ {n}: Architect เห็นว่าต้องแก้ spec", proposal, head)
+    else:
+        hc.say("NEEDS_DECISION", f"{head}\n\nทางเลือก:\n{proposal}", decide_next(card.key),
+               user='เลือกทาง แล้วพิมพ์ "ทำต่อ: <ทางที่เลือก>" หรือ "แก้ spec: <สิ่งที่จะแก้>" หรือ "พักการ์ด"')
+    return 0
+
+
+def cmd_park(a):
+    card = Card(a.key)
+    text = " ".join(a.text)
+    hc.write_json(card.p("parked.json"), {"at": now(), "text": text})
+    card.decide("พักการ์ด", text)
+    if hc.active_key(card.root) == card.key:
+        (hc.hdir(card.root) / "ACTIVE").unlink(missing_ok=True)
+    hc.say("PARKED", f"พักการ์ด {card.key} แล้ว งานและไฟล์ทั้งหมดยังอยู่ครบ", f"{SHOW} แล้วหยุด ห้ามแก้งานของการ์ดนี้ต่อ",
+           user=f'กลับมาทำต่อเมื่อพร้อม พิมพ์ "ทำการ์ด {card.key} ต่อ"')
+    return 0
+
+
+def cmd_unpark(a):
+    card = Card(a.key)
+    if not card.p("parked.json").exists():
+        hc.say("INFO", f"การ์ด {card.key} ไม่ได้ถูกพักไว้", f"รัน {SELF} status {card.key} แล้วทำตาม NEXT")
+        return 0
+    card.p("parked.json").unlink()
+    card.decide("ทำการ์ดต่อ", " ".join(a.text))
+    (hc.hdir(card.root) / "ACTIVE").write_text(card.key, encoding="utf-8")
+    hc.say("UNPARKED", f"การ์ด {card.key} กลับมาทำงานต่อ", f"รัน {SELF} status {card.key} แล้วทำตาม NEXT")
     return 0
 
 
@@ -333,6 +503,10 @@ def gate2_page(card, ev, s):
 
 def cmd_commit(a):
     card = Card(a.key)
+    if card.p("parked.json").exists():
+        hc.say("BLOCKED", f"การ์ด {card.key} ถูกพักไว้", "แจ้งผู้ใช้ แล้วหยุดรอคำสั่ง",
+               user=f'ถ้าจะทำต่อ พิมพ์ "ทำการ์ด {card.key} ต่อ"')
+        return 1
     ev = hc.read_json(card.p("evidence.json"), {})
     if ev.get("result") != "pass" or ev.get("review", {}).get("verdict") != "PASS":
         hc.say("BLOCKED", "ยังไม่มี evidence ที่ผ่านทั้ง gate และ review", f"รัน {SELF} review {card.key}",
@@ -412,7 +586,10 @@ def cmd_status(a):
     body = (f"การ์ด: {key} (ACTIVE: {hc.active_key(root)})\nไฟล์: {', '.join(files) or '-'}\n"
             f"Gate 1: {'ผ่าน' if 'gate1' in ap else '-'} · Gate 2: {'ผ่าน' if 'gate2' in ap else '-'}\n"
             f"state: {st or '-'}\nevidence ล่าสุด: {ev.get('result', '-')} / review: {ev.get('review', {}).get('verdict', '-')}")
-    if card.p("questions.md").exists():
+    if card.p("parked.json").exists():
+        body += f"\nพักไว้: {hc.read_json(card.p('parked.json'), {}).get('at')}"
+        nxt = f'การ์ดถูกพักไว้ ถ้าผู้ใช้สั่งทำต่อ ให้รัน {SELF} unpark {key} "<ข้อความของผู้ใช้>"'
+    elif card.p("questions.md").exists():
         nxt = f'มีคำถามค้าง แสดง {card.rel}/questions.md ให้ผู้ใช้ แล้วรัน {SELF} answer {key} "<ข้อความของผู้ใช้>"'
     elif "gate1" not in ap:
         nxt = f"แสดง {card.rel}/spec.md ให้ผู้ใช้เพื่ออนุมัติ Gate 1"
@@ -431,7 +608,13 @@ def main():
     sp = sub.add_parser("spec")
     sp.add_argument("key", nargs="?")
     sp.add_argument("--local", nargs="+", help="งานที่ไม่มีการ์ด Jira: ข้อความโจทย์ของผู้ใช้ตามตัวอักษร")
-    for name in ("answer", "approve", "commit"):
+    sp.add_argument("--model", choices=("haiku", "sonnet", "opus"), help="เฉพาะเมื่อผู้ใช้สั่งเอง (ค่าตั้งต้นจาก config)")
+    sp.add_argument("--effort", choices=("low", "medium", "high", "xhigh", "max"), help="เฉพาะเมื่อผู้ใช้สั่งเอง")
+    dp = sub.add_parser("dispute", help="แย้งผลตรวจด้วยหลักฐานจากคำสั่ง แทนการหาทางเลี่ยง")
+    dp.add_argument("key")
+    dp.add_argument("--claim", nargs="+", help="ข้ออ้าง 1 บรรทัด (ถือว่ายังไม่ยืนยัน)")
+    dp.add_argument("--prove", action="append", help="คำสั่งที่ arbiter จะรันเป็นหลักฐาน (ใส่ได้หลายครั้ง)")
+    for name in ("answer", "approve", "commit", "park", "unpark"):
         sp = sub.add_parser(name)
         sp.add_argument("key")
         sp.add_argument("text", nargs="+")
@@ -444,7 +627,8 @@ def main():
     a = ap.parse_args()
     try:
         return {"spec": cmd_spec, "answer": cmd_answer, "approve": cmd_approve, "review": cmd_review,
-                "commit": cmd_commit, "status": cmd_status}[a.cmd](a)
+                "commit": cmd_commit, "status": cmd_status, "dispute": cmd_dispute, "park": cmd_park,
+                "unpark": cmd_unpark}[a.cmd](a)
     except Exception as e:  # report through the same channel the agent reads
         hc.say("ERROR", f"{type(e).__name__}: {e}", "แสดงข้อความนี้ให้ผู้ใช้ แล้วหยุดรอคำสั่ง")
         return 1
