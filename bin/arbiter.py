@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arbiter_core as hc  # noqa: E402
 import arbiter_board  # noqa: E402
 import arbiter_claude as ac  # noqa: E402
+import arbiter_jira  # noqa: E402
 from arbiter_claude import now, render, sections  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -247,6 +248,8 @@ def cmd_approve(a):
                    "review_model": {"model": rm, "effort": re_, "source": src}}
     hc.write_json(card.p("approvals.json"), ap)
     hc.NOTICES.append(f"Claude ขั้นรีวิว: {rm} · {re_} ({src})")
+    if not card.local:  # the card on Jira is often a few lines: readers there (BA at UAT / QA) get the approved AC
+        arbiter_jira.spec_to_card(card.key, card.spec_text(), ap["gate1"]["at"])
     st = hc.read_json(card.p("state.json"), None)
     if st:  # a spec revised mid-card is a new contract: the old rejection and gate-run budget no longer apply
         st["rejections"], st["gate_runs"] = 0, 0

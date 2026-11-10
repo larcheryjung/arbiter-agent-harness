@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.7 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -31,6 +31,7 @@
   <tr><td><code>/feature &lt;โจทย์&gt;</code> (LOCAL)</td><td><span class="st">พร้อม</span></td><td>ทดสอบกับ Claude จริงใน repo ทดลองแล้ว ยังไม่ได้ใช้กับงานจริง</td></tr>
   <tr><td>ปลด deadlock</td><td><span class="st">พร้อม</span></td><td>decisions.md · SPEC_ISSUE · dispute · park ทดสอบกับ fake Claude แล้ว</td></tr>
   <tr><td>ดึงการ์ดขึ้นบอร์ด</td><td><span class="st ok">ใช้จริง</span></td><td>ตอน <code>spike link</code> และ <code>spec KS-xx</code></td></tr>
+  <tr><td>เขียน spec ลงการ์ดตอน Gate 1</td><td><span class="st">พร้อม</span></td><td>ทดสอบกับ Jira จริงบนการ์ดทดลอง KS-172 แล้ว ยังไม่ได้ใช้กับการ์ดงานจริง</td></tr>
   <tr><td>Safety floor: git pre-commit</td><td><span class="st ok">ทำงาน</span></td><td>scope, secret, Gate 1/2, ไฟล์ต้องห้าม, เอกสารล้วน commit ได้เอง</td></tr>
   <tr><td>Jira KS เท่านั้น</td><td><span class="st ok">ทำงาน</span></td><td>3 ชั้น (credential, filter, jira-guard)</td></tr>
   <tr><td><code>/poc</code>, <code>/quick</code>, Ops</td><td><span class="st">ยังไม่ทำ</span></td><td>รอตัวกระตุ้น ดูด้านล่าง</td></tr>
@@ -63,6 +64,7 @@
   <tr><td><code>9d1e09f</code> v0.3.4</td><td>10 พ.ย.</td><td>สั่งใช้ <code>fable</code> ได้ตอนเริ่มการ์ดและในคำอนุมัติ Gate 1 (เดิมคำว่า fable ในคำอนุมัติถูกเมินแล้วใช้ opus) · ค่าตั้งต้นและคำแนะนำจาก spike ไม่เปลี่ยน · 56 เทสต์</td></tr>
   <tr><td><code>8535cc9</code> v0.3.5</td><td>10 พ.ย.</td><td>รับชื่อรุ่นเต็ม (เช่น <code>claude-fable-5-1</code>) ตอนเริ่มการ์ดและในคำอนุมัติ Gate 1 · <code>sessions.jsonl</code> เพิ่ม <code>model_used</code> = รุ่นจริงที่ CLI รายงาน · ติดตั้งที่ hbs-web-core (pilot ที่สาม) · 59 เทสต์</td></tr>
   <tr><td><code>3d26db9</code> v0.3.6</td><td>10 พ.ย.</td><td>Builder เขียน <code>สรุปจาก Builder</code> ต่อท้ายเองในหน้าที่รอคุณตัดสิน (ข้อความของ arbiter ยังแสดงตามตัวอักษรก่อน · หน้า ERROR / BLOCKED / STALE ไม่สรุป) · คำสั่งอยู่ใน <code>NEXT:</code> และ workflow ข้อ 3 · 60 เทสต์</td></tr>
+  <tr><td>(รอ commit) v0.3.7</td><td>10 พ.ย.</td><td>ตอนอนุมัติ Gate 1 arbiter เขียน spec ลง description ของการ์ด KS เอง ใต้ข้อความเดิมของการ์ด (อนุมัติใหม่ = แทนส่วนเดิม · เขียนไม่สำเร็จไม่หยุดงาน · การ์ด LOCAL ไม่แตะ Jira) · ไม่เปลี่ยน workflow และ config จึงไม่ต้องติดตั้งใหม่ · 66 เทสต์</td></tr>
 </table></div>
 
 <h2>Roadmap</h2>

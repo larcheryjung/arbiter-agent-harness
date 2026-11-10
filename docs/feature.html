@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.7 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -36,7 +36,7 @@
   <tr><th>#</th><th class="h-human">คุณ</th><th class="h-gemini">Gemini</th><th class="h-machine">arbiter</th><th class="h-claude">Claude</th></tr>
   <tr><td class="n">1</td><td class="c-human">พิมพ์ <code>/feature KS-160</code></td><td class="c-gemini">รัน <code>arbiter spec KS-160</code></td><td class="c-machine">ตั้งการ์ดเป็น ACTIVE · ดึงการ์ดขึ้นบอร์ด Jira · สร้าง prompt จาก template</td><td class="c-claude">อ่านการ์ดจาก Jira + แผนของ spike (ถ้ามี) + โค้ด แล้วร่าง spec และคำถาม</td></tr>
   <tr><td class="n">2</td><td class="c-human">ตอบคำถาม (ข้อที่ไม่ตอบใช้ค่า default)</td><td class="c-gemini">แสดงคำถามตามตัวอักษร + สรุปจาก Builder · ส่งคำตอบด้วย <code>answer</code></td><td class="c-machine">ตรวจว่า Claude อ่านการ์ด Jira สำเร็จจริง · บันทึกคำตอบลง <code>answers.md</code></td><td class="c-claude">session เดิม (resume) ปรับ spec ตามคำตอบ</td></tr>
-  <tr><td class="n">3</td><td class="c-human">อ่าน spec แล้วพิมพ์ <b>อนุมัติ Gate 1</b></td><td class="c-gemini">รัน <code>approve</code> ด้วยข้อความของคุณ</td><td class="c-machine">เก็บ sha256 ของ spec + model ที่ใช้รีวิว</td><td></td></tr>
+  <tr><td class="n">3</td><td class="c-human">อ่าน spec แล้วพิมพ์ <b>อนุมัติ Gate 1</b></td><td class="c-gemini">รัน <code>approve</code> ด้วยข้อความของคุณ</td><td class="c-machine">เก็บ sha256 ของ spec + model ที่ใช้รีวิว · เขียน spec ลง description ของการ์ด Jira</td><td></td></tr>
   <tr><td class="n">4</td><td></td><td class="c-gemini">เขียนงานเฉพาะไฟล์ใน <code>scope_allow</code> แล้วรัน <code>review</code></td><td class="c-machine">scope → verify → tree-stable → <code>evidence.json</code></td><td></td></tr>
   <tr><td class="n">5</td><td></td><td class="c-gemini">ถ้า FAIL: แก้แล้ว review ใหม่ (หรือ <a href="stuck.html#dispute">dispute</a>)</td><td class="c-machine">นับรอบ · ครบ 2 รอบตีกลับ หรือ 6 รอบ gate → ESCALATE</td><td class="c-claude">อ่าน spec + diff + evidence แล้วให้ PASS / FAIL / SPEC_ISSUE</td></tr>
   <tr><td class="n">6</td><td class="c-human">อ่านหน้า Gate 2 แล้วพิมพ์ <b>อนุมัติ Gate 2</b></td><td class="c-gemini">รัน <code>commit</code> ด้วยข้อความของคุณ</td><td class="c-machine">ตรวจซ้ำทุกอย่าง แล้ว commit พร้อม trailer</td><td></td></tr>
@@ -80,6 +80,12 @@ verify:
   </li>
   <li><b>Gemini เขียนงาน: <span class="st">APPROVED_GATE1</span></b>
     <p>arbiter แสดงรายการ <code>scope_allow</code> อีกครั้ง Gemini แก้ได้เฉพาะไฟล์เหล่านั้น ถ้าจำเป็นต้องแก้นอก scope ต้องหยุดถามคุณ ระหว่างนี้คุณไม่ต้องทำอะไร</p>
+    <p id="card-spec">ตั้งแต่ v0.3.7: ตอนอนุมัติ Gate 1 arbiter เขียน spec ที่อนุมัติลง description ของการ์ด KS เอง เพื่อให้คนที่เปิดการ์ด (เช่น BA ตอน UAT / QA) เห็น AC แม้การ์ดเดิมจะเขียนไว้สั้นๆ</p>
+    <ul>
+      <li>ข้อความเดิมของการ์ดอยู่ครบด้านบน spec ต่อท้ายใต้เส้นคั่นและหัวข้อ <code>Spec (อนุมัติ Gate 1 · วันที่)</code></li>
+      <li>แก้ spec แล้วอนุมัติ Gate 1 ใหม่ จะแทนตั้งแต่หัวข้อนั้นจนจบ description ถ้าจะเขียนเพิ่มบนการ์ด ให้เขียนเหนือเส้นคั่น</li>
+      <li>เขียนไม่สำเร็จไม่หยุดงาน หน้านี้จะขึ้น ⚠ พร้อมสาเหตุและลิงก์การ์ด</li>
+    </ul>
   </li>
   <li><b>เครื่องตรวจ + Claude รีวิว: <code>arbiter review</code></b>
     <p>ลำดับการตรวจอยู่ใน <a href="concepts.html#evidence">บทที่ 1 ข้อ 5</a> ผลที่เป็นไปได้:</p>
@@ -159,7 +165,7 @@ Gemini จะส่งด้วย <code>answer</code> ซึ่ง:</p>
 และเก็บคำพูดของคุณไว้ใน <code>intent.md</code> ตามตัวอักษร ขั้นตอนอื่นเหมือนการ์ด KS ทุกอย่าง ต่างกันแค่:</p>
 <ul>
   <li>Claude ไม่มีเครื่องมือ Jira เลย อ่านโจทย์จาก <code>intent.md</code></li>
-  <li>ไม่ดึงการ์ดขึ้นบอร์ด และหลัง commit ห้ามแตะ Jira</li>
+  <li>ไม่ดึงการ์ดขึ้นบอร์ด ไม่เขียน spec ลงการ์ด และหลัง commit ห้ามแตะ Jira</li>
 </ul>
 
 <h2 id="tips">เคล็ดลับ</h2>

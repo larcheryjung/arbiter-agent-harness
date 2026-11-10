@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.7 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -136,7 +136,7 @@
   --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"     &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่าน
 
 # แล้วคน commit เอง (เฉพาะ path เหล่านี้ ไม่กวาดไฟล์อื่นที่ stage ค้างไว้)
-git commit --no-verify -m "chore: install arbiter 0.3.6" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
+git commit --no-verify -m "chore: install arbiter 0.3.7" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
 <ul class="small">
   <li>รันซ้ำได้: คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ เขียน workflow ใหม่</li>
   <li><b>โค้ดของ arbiter มีผลทันที</b> เพราะทุกโปรเจกต์เรียกจากโฟลเดอร์เดียวกัน ส่วน workflow ต้องรัน install ใหม่ และ<b>เปิดแชท Gemini ใหม่</b></li>
@@ -158,6 +158,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.6" -- .arbiter/config.json
   bin/arbiter_claude.py    เรียก claude -p (อ่านอย่างเดียว), template, stream, ภาษา
   bin/arbiter_core.py      git, scope, docs_allow, config จาก HEAD, say() STATUS/NEXT
   bin/arbiter_board.py     ดึงการ์ด KS ขึ้นบอร์ด
+  bin/arbiter_jira.py      เขียน spec ที่อนุมัติ Gate 1 ลงการ์ด KS
   bin/arbiter_extract.py   แปลง .docx/.xlsx
   floor/git/pre_commit.py  hook
   prompts/                 template ของ Claude (spec, answer, review, review_prev, dispute, spike_*)

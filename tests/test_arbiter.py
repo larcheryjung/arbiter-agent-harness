@@ -81,7 +81,8 @@ class Base(unittest.TestCase):
 
     def h(self, *args):
         env = dict(os.environ, FAKE_DIR=str(self.fake), ARBITER_CLAUDE_CMD=f"{sys.executable}|{FAKE}",
-                   ARBITER_BOARD_FAKE=getattr(self, "board_fake", None) or str(self.fake / "board.jsonl"))
+                   ARBITER_BOARD_FAKE=getattr(self, "board_fake", None) or str(self.fake / "board.jsonl"),
+                   ARBITER_JIRA_FAKE=getattr(self, "jira_fake", None) or str(self.fake / "jira.json"))
         r = subprocess.run([sys.executable, str(ARBITER), *args], cwd=self.repo, capture_output=True,
                            text=True, encoding="utf-8", env=env)
         status = next((ln[8:].split()[0] for ln in r.stdout.splitlines() if ln.startswith("STATUS: ")), None)
@@ -611,6 +612,93 @@ class ArbiterTest(Base):
             del os.environ[arbiter_board.FAKE_ENV]
             hc.NOTICES.clear()
         self.assertEqual(json.loads(log.read_text(encoding="utf-8")), {"board": "99", "issues": ["KS-7"]})
+
+    # ---------- spec written onto the Jira card at Gate 1 ----------
+    def jira(self, key="KS-1"):
+        return json.loads((self.fake / "jira.json").read_text(encoding="utf-8"))[key]
+
+    def test_gate1_approval_appends_the_spec_below_the_cards_own_text(self):
+        mine = {"type": "paragraph", "content": [{"type": "text", "text": "ทำ greeting สั้นๆ"}]}
+        (self.fake / "jira.json").write_text(json.dumps({"KS-1": {"type": "doc", "version": 1, "content": [mine]}}),
+                                             encoding="utf-8")
+        self.queue([spec_resp()])
+        self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")
+        self.assertEqual(self.jira()["content"], [mine])  # nothing is written before the approval
+        st, out = self.h("approve", "KS-1", "อนุมัติ")
+        self.assertEqual(st, "APPROVED_GATE1", out)
+        self.assertIn("(เขียน spec ที่อนุมัติลง description ของการ์ด KS-1 แล้ว:", out)
+        nodes = self.jira()["content"]
+        self.assertEqual(nodes[0], mine)  # the user's own words, untouched and first
+        self.assertEqual([n["type"] for n in nodes],
+                         ["paragraph", "rule", "heading", "paragraph", "heading", "heading", "paragraph", "codeBlock"])
+        self.assertTrue(nodes[2]["content"][0]["text"].startswith("Spec (อนุมัติ Gate 1 · 20"))
+        self.assertEqual((nodes[4]["attrs"]["level"], nodes[4]["content"][0]["text"]), (2, "KS-1: Greeting"))
+        self.assertIn("scope_allow:\n  - src/**", nodes[7]["content"][0]["text"])
+
+    def test_new_gate1_approval_replaces_the_spec_section_instead_of_stacking(self):
+        self.to_gate1()
+        self.queue([spec_resp(spec=SPEC.replace("say hello", "say goodbye"))])
+        self.assertEqual(self.h("answer", "KS-1", "แก้ spec: เปลี่ยนเป็น goodbye")[0], "READY_FOR_GATE1")
+        self.assertEqual(self.h("approve", "KS-1", "อนุมัติ")[0], "APPROVED_GATE1")
+        raw = json.dumps(self.jira(), ensure_ascii=False)
+        self.assertEqual(raw.count("Spec (อนุมัติ Gate 1"), 1)
+        self.assertIn("say goodbye", raw)
+        self.assertNotIn("say hello", raw)
+        self.assertEqual(self.jira()["content"][0]["type"], "heading")  # the card had no text: no leading rule
+
+    def test_local_card_never_touches_jira(self):
+        self.queue([spec_resp(tools=[])])
+        self.assertEqual(self.h("spec", "--local", "เพิ่ม greeting")[0], "READY_FOR_GATE1")
+        st, out = self.h("approve", "LOCAL-1", "อนุมัติ")
+        self.assertEqual(st, "APPROVED_GATE1", out)
+        self.assertNotIn("การ์ด LOCAL-1", out)
+        self.assertFalse((self.fake / "jira.json").exists())
+
+    def test_jira_write_failure_tells_the_user_and_does_not_block(self):
+        self.queue([spec_resp()])
+        self.assertEqual(self.h("spec", "KS-1")[0], "READY_FOR_GATE1")
+        self.jira_fake = "fail"
+        st, out = self.h("approve", "KS-1", "อนุมัติ")
+        self.assertEqual(st, "APPROVED_GATE1", out)
+        self.assertIn("⚠ เขียน spec ลงการ์ด KS-1 ไม่สำเร็จ (fake failure)", out)
+        self.assertLess(out.index("⚠ เขียน spec"), out.index("STATUS:"))
+        self.assertIn("gate1", json.loads(self.card("approvals.json").read_text(encoding="utf-8")))
+
+    def test_spec_is_only_ever_written_to_ks_cards(self):
+        import arbiter_jira
+        store = self.fake / "direct-jira.json"
+        os.environ[arbiter_jira.FAKE_ENV] = str(store)
+        try:
+            hc.NOTICES.clear()
+            self.assertTrue(arbiter_jira.spec_to_card("ABC-1", SPEC, "2026-11-10T10:00:00"))
+            self.assertTrue(arbiter_jira.spec_to_card("LOCAL-2", SPEC, "2026-11-10T10:00:00"))
+            self.assertEqual(hc.NOTICES, [])
+            self.assertFalse(store.exists())
+            self.assertTrue(arbiter_jira.spec_to_card("KS-7", SPEC, "2026-11-10T10:00:00"))
+            self.assertEqual(list(json.loads(store.read_text(encoding="utf-8"))), ["KS-7"])
+        finally:
+            del os.environ[arbiter_jira.FAKE_ENV]
+            hc.NOTICES.clear()
+
+    def test_spec_markdown_becomes_jira_blocks_without_losing_text(self):
+        import arbiter_jira
+        md = ("## Acceptance Criteria\nAC1: Given **A**\nWhen `run`\nThen ok\n\n- one\n  - nested\n- two\n\n"
+              "1. first\n2. second\n\n| a | b |\n|---|---|\n\n---\n```arbiter\nscope_allow:\n  - src/**\n```")
+        nodes = arbiter_jira.md_to_adf(md, shift=1)
+        self.assertEqual([n["type"] for n in nodes],
+                         ["heading", "paragraph", "bulletList", "orderedList", "paragraph", "rule", "codeBlock"])
+        self.assertEqual(nodes[0]["attrs"]["level"], 3)
+        self.assertEqual([c["type"] for c in nodes[1]["content"]],
+                         ["text", "text", "hardBreak", "text", "text", "hardBreak", "text"])
+        self.assertEqual(nodes[1]["content"][1], {"type": "text", "text": "A", "marks": [{"type": "strong"}]})
+        self.assertEqual(nodes[1]["content"][4], {"type": "text", "text": "run", "marks": [{"type": "code"}]})
+        one, two = nodes[2]["content"]
+        self.assertEqual([c["type"] for c in one["content"]], ["paragraph", "bulletList"])
+        self.assertEqual(one["content"][1]["content"][0]["content"][0]["content"][0]["text"], "nested")
+        self.assertEqual(two["content"][0]["content"][0]["text"], "two")
+        self.assertEqual((nodes[3]["attrs"]["order"], len(nodes[3]["content"])), (1, 2))
+        self.assertEqual(nodes[4]["content"][0]["text"], "| a | b |")  # a table stays readable as plain text
+        self.assertEqual(nodes[6]["content"][0]["text"], "scope_allow:\n  - src/**")
 
     def test_uncommitted_config_edit_is_refused(self):
         self.to_gate1()

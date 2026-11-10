@@ -7,11 +7,11 @@ Agent harness ของคุณก้อง (ตัวที่ 5) ใช้แ
 
 ## สถานะ (2026-11-10)
 
-- **v0.3.6** · เทสต์ 60 ข้อ: `python -m unittest discover -s tests`
+- **v0.3.7** · เทสต์ 66 ข้อ: `python -m unittest discover -s tests`
 - Pilot `/feature`: `C:\local-code-repo\hbs3\epolicy` (branch `dev`) ติดตั้ง 0.3.6 · KS-118 → `e3a4e5a` (ค่า Claude $6.24)
 - Pilot `/spike`: `C:\local-code-repo\hbs3\hbs-strangler-service` (ติดตั้ง 0.3.6) · SPIKE-1 จบแล้ว → KS-160, KS-166 (Policy Status API spec ให้เว็บ TA) · KS-160 → `4cb0dc3` (การ์ดจริง 2/10)
 - Pilot ที่สาม: `C:\local-code-repo\hbs-legacy\hbs-web-core` (branch `develop`, ติดตั้ง 0.3.6 เมื่อ 2026-11-10) · verify = Ant build · repo แรกที่มีหลาย branch (รายละเอียดใน docs/roadmap.html)
-- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น, ดึงการ์ด KS ขึ้นบอร์ดเอง (`spike link`, `spec KS-xx`), ปลด deadlock (`decisions.md`, `SPEC_ISSUE`, `dispute`, `park`), สั่ง model เองได้ (`haiku`/`sonnet`/`opus`/`fable` หรือชื่อรุ่นเต็มเช่น `claude-fable-5-1`; `fable` = alias ของ CLI ตอนนี้คือ `claude-fable-5-2` ไม่เป็นค่าตั้งต้น; รุ่นจริงบันทึกเป็น `model_used` ใน `sessions.jsonl`), Builder เขียน `สรุปจาก Builder` ต่อท้ายเองในหน้าที่รอคนตัดสิน (ข้อความของ arbiter ตามตัวอักษรก่อนเสมอ · ERROR/BLOCKED/STALE ไม่สรุป · ข้อความอยู่ที่ `arbiter_core.SHOW_SUM` + workflow ข้อ 3)
+- มีแล้ว: `/feature KS-xx`, `/feature <โจทย์>` (การ์ด `LOCAL-n`), `/spike KS-xx` หรือ `/spike <requirement + ไฟล์>` (แผน → การ์ด → Jira), git pre-commit (scope, secret, Gate 1/2, `docs_allow`), config ใช้ฉบับที่ commit เท่านั้น, ดึงการ์ด KS ขึ้นบอร์ดเอง (`spike link`, `spec KS-xx`), เขียน spec ที่อนุมัติลง description ของการ์ด KS เองตอน Gate 1 (ใต้ข้อความเดิมของการ์ด · อนุมัติใหม่ = แทนส่วนเดิม · ไม่สำเร็จไม่หยุดงาน), ปลด deadlock (`decisions.md`, `SPEC_ISSUE`, `dispute`, `park`), สั่ง model เองได้ (`haiku`/`sonnet`/`opus`/`fable` หรือชื่อรุ่นเต็มเช่น `claude-fable-5-1`; `fable` = alias ของ CLI ตอนนี้คือ `claude-fable-5-2` ไม่เป็นค่าตั้งต้น; รุ่นจริงบันทึกเป็น `model_used` ใน `sessions.jsonl`), Builder เขียน `สรุปจาก Builder` ต่อท้ายเองในหน้าที่รอคนตัดสิน (ข้อความของ arbiter ตามตัวอักษรก่อนเสมอ · ERROR/BLOCKED/STALE ไม่สรุป · ข้อความอยู่ที่ `arbiter_core.SHOW_SUM` + workflow ข้อ 3)
 - ยังไม่มี: `/poc`, `/quick`, Ops, pre-push, hook กัน HBS DB/prod, pack `jira-ks`
 
 ## Roadmap ย่อ
@@ -40,6 +40,7 @@ bin/arbiter_claude.py    เรียก claude -p (อ่านอย่าง�
 bin/arbiter_core.py      git, scope, config จาก HEAD, say() STATUS/NEXT
 bin/arbiter_extract.py   แปลง .docx/.xlsx ที่แนบมากับ requirement เป็นข้อความ
 bin/arbiter_board.py     ดึงการ์ด KS ออกจาก Backlog ขึ้นบอร์ด (Jira Agile API, ไม่บล็อกงาน)
+bin/arbiter_jira.py      เขียน spec ที่อนุมัติ Gate 1 ลง description ของการ์ด KS (Jira REST v3 / ADF, ไม่บล็อกงาน)
 floor/git/pre_commit.py  hook (โปรเจกต์ตั้ง core.hooksPath มาที่ floor/git)
 prompts/                 template ที่ arbiter สร้าง prompt ให้ Claude (Gemini เขียน prompt เองไม่ได้)
 adapters/antigravity/workflows/   feature.md, spike.md ของ Gemini (install คัดลอกและฝัง path)
