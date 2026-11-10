@@ -13,6 +13,9 @@ STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID", "
 BUILTIN_TOOLS = "Read,Grep,Glob"  # --tools: the ONLY built-ins that exist in the session (no Bash/Edit/Write)
 JIRA_READ_TOOLS = "mcp__jira__jira_get_issue,mcp__jira__jira_search"
 DENY_TOOLS = "Edit,Write,NotebookEdit,Bash,PowerShell"
+# Model aliases the user may name (`spec --model`, or inside the Gate 1 approval). `fable` is opt-in only: it is
+# never a default and spike cards may not recommend it (arbiter_spike.MODELS) while access to it is a trial.
+USER_MODELS = ("haiku", "sonnet", "opus", "fable")
 # Written in the target language itself: a model reading a Thai prompt drifts back to Thai otherwise.
 LANG_RULES = {
     "th": "สำคัญ: เขียนเนื้อหาทั้งหมดเป็นภาษาไทย ชื่อไฟล์ คลาส เมธอด คำสั่ง และศัพท์เทคนิคใช้ตามต้นฉบับ "

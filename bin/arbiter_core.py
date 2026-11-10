@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 BLOCK_RE = re.compile(r"```arbiter[ \t]*\r?\n(.*?)```", re.S)
 KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")

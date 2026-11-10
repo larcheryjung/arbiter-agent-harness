@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="ver">v0.3.4 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -182,6 +182,7 @@ Antigravity รันคำสั่งผ่าน <code>powershell -Command</c
   <tr><td>รีวิว · dispute</td><td>แจ้งในหน้า Gate 1 ว่าจะใช้อะไรและมาจากไหน: ที่คุณสั่ง → ที่การ์ดจาก spike แนะนำ → Opus · High <b>ถ้าไม่ทักในคำอนุมัติ ใช้ตามนั้น</b> ทักได้ เช่น "อนุมัติ Gate 1 ใช้ opus high"</td></tr>
 </table></div>
 <p class="small muted">เหตุผล: งานที่แพงที่สุดใน KS-160 เกิดจาก spec ที่ผิดตั้งแต่ต้น จึงไม่ประหยัดที่ขั้น spec ส่วนรีวิวที่ใช้ sonnet ใน KS-160 ราคาครึ่งเดียว ($0.56 เทียบ $1.11) model ที่ใช้จริงทุกครั้งอยู่ใน <code>sessions.jsonl</code></p>
+<p class="small muted">ชื่อที่สั่งเองได้: <code>haiku</code> · <code>sonnet</code> · <code>opus</code> · <code>fable</code> (v0.3.4) เช่น "/feature KS-12 ใช้ fable" หรือ "อนุมัติ Gate 1 ใช้ fable high" <code>fable</code> ต้องสั่งเองเท่านั้น ไม่เป็นค่าตั้งต้น และการ์ดจาก spike แนะนำไม่ได้ เพราะยังเป็นสิทธิ์ทดลอง ชื่อเหล่านี้เป็น alias ที่ <code>claude</code> CLI แปลเป็นรุ่นล่าสุดเอง (ทดสอบ 10 พ.ย. 2026 กับ CLI 2.1.322: <code>fable</code> = <code>claude-fable-5-2</code>) ถ้าต้องการตรึงรุ่น เช่น Fable 5.1 ให้ตั้ง env <code>ARBITER_MODEL=claude-fable-5-1</code> หรือใส่ชื่อเต็มใน <code>config.json</code></p>
 
 <h2 id="lang">9. ภาษา</h2>
 <p>spec, คำถาม, หน้า Gate 2 และผลรีวิวจะใช้ภาษาเดียวกับ<b>ข้อความล่าสุดที่คุณพิมพ์</b>ในการ์ดนั้น ถ้ายังไม่ได้พิมพ์อะไร ใช้ภาษาไทย (ค่า <code>language</code> ใน config)</p>

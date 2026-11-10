@@ -22,7 +22,7 @@ TOOLS = f"{ac.BUILTIN_TOOLS},{ac.JIRA_READ_TOOLS}"  # Jira read: find existing e
 DEFAULTS = {"model": "opus", "effort": "high", "repos": {}, "read_dirs": [], "max_points": 8,
             "max_rounds_resume": 6, "budget_usd": 15}
 POINTS, TYPES = (1, 2, 3, 5, 8), ("Story", "Task")
-MODELS, EFFORTS = ("haiku", "sonnet", "opus"), ("low", "medium", "high")
+MODELS, EFFORTS = ("haiku", "sonnet", "opus"), ("low", "medium", "high")  # what a card may recommend (no fable)
 SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
 STOP = "แสดงข้อความนี้ให้ผู้ใช้ แล้วหยุดรอคำสั่ง"
 

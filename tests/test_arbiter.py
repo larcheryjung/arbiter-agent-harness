@@ -326,6 +326,30 @@ class ArbiterTest(Base):
         args = self.calls()[-1]["args"]
         self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("sonnet", "low"))
 
+    def test_fable_picked_at_card_start(self):
+        self.queue([spec_resp(), review_resp("PASS")])
+        st, out = self.h("spec", "KS-1", "--model", "fable")
+        args = self.calls()[-1]["args"]
+        self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("fable", "high"))
+        self.assertIn("Claude ขั้นรีวิว: fable · high (คุณสั่งตอนเริ่มการ์ด)", out)
+        self.h("approve", "KS-1", "อนุมัติ Gate 1")
+        self.write("src/app.py", "print('a')\n")
+        self.h("review", "KS-1")
+        args = self.calls()[-1]["args"]
+        self.assertEqual(args[args.index("--model") + 1], "fable")
+
+    def test_fable_named_in_gate1_approval_is_used_for_review_only(self):
+        self.queue([spec_resp(), review_resp("PASS")])
+        self.h("spec", "KS-1")
+        spec_args = self.calls()[-1]["args"]
+        self.assertEqual(spec_args[spec_args.index("--model") + 1], "opus")  # the default did not move
+        st, out = self.h("approve", "KS-1", "อนุมัติ Gate 1 ใช้ fable high")
+        self.assertIn("Claude ขั้นรีวิว: fable · high (คุณสั่งตอนอนุมัติ Gate 1)", out)
+        self.write("src/app.py", "print('a')\n")
+        self.h("review", "KS-1")
+        args = self.calls()[-1]["args"]
+        self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("fable", "high"))
+
     def test_default_model_is_opus_high_everywhere(self):
         self.queue([spec_resp(), review_resp("PASS")])
         st, out = self.h("spec", "KS-1")

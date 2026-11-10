@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.3 · 9 พ.ย. 2026</div>
+  <div class="ver">v0.3.4 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -27,7 +27,7 @@
 <h2 id="cmd-feature">คำสั่ง /feature</h2>
 <div class="tbl"><table>
   <tr><th>คำสั่ง</th><th>ใช้เมื่อ</th></tr>
-  <tr><td><code>spec KS-xx [--model M --effort E]</code></td><td>เริ่มการ์ด Jira (model เฉพาะเมื่อคุณสั่ง)</td></tr>
+  <tr><td><code>spec KS-xx [--model M --effort E]</code></td><td>เริ่มการ์ด Jira (model เฉพาะเมื่อคุณสั่ง: haiku / sonnet / opus / fable)</td></tr>
   <tr><td><code>spec --local "โจทย์"</code></td><td>เริ่มงานที่ไม่มีการ์ด ได้ <code>LOCAL-n</code></td></tr>
   <tr><td><code>answer KEY "ข้อความ"</code></td><td>ตอบคำถาม / ขอแก้ spec (ยกเลิก Gate 1 เดิมเสมอ)</td></tr>
   <tr><td><code>approve KEY "ข้อความ"</code></td><td>Gate 1 (อ่าน model รีวิวจากข้อความได้ เช่น "ใช้ opus high")</td></tr>
@@ -112,7 +112,7 @@
   <tr><td><code>spike.*</code></td><td>opus, high, 8, 6, 15</td><td><code>model</code>, <code>effort</code>, <code>repos</code>, <code>read_dirs</code>, <code>max_points</code>, <code>max_rounds_resume</code>, <code>budget_usd</code> (เตือน)</td></tr>
   <tr><td><code>jira_board_id</code></td><td>5335</td><td>บอร์ดที่ดึงการ์ด KS ขึ้นไป</td></tr>
 </table></div>
-<p class="small muted">env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (บังคับ model ทุกครั้ง), <code>ARBITER_CLAUDE_CMD</code> (fake Claude), <code>ARBITER_BOARD_FAKE</code> (ไม่เรียก Jira จริง)</p>
+<p class="small muted">env สำหรับทดสอบ: <code>ARBITER_MODEL</code> (บังคับ model ทุกครั้ง รับชื่อเต็มได้ เช่น <code>claude-fable-5-1</code>), <code>ARBITER_CLAUDE_CMD</code> (fake Claude), <code>ARBITER_BOARD_FAKE</code> (ไม่เรียก Jira จริง)</p>
 
 <h2 id="workflow">กติกาใน workflow ของ Gemini (<code>.agent/workflows/feature.md</code>)</h2>
 <ol class="small">
@@ -136,7 +136,7 @@
   --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"     &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่าน
 
 # แล้วคน commit เอง (เฉพาะ path เหล่านี้ ไม่กวาดไฟล์อื่นที่ stage ค้างไว้)
-git commit --no-verify -m "chore: install arbiter 0.3.3" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
+git commit --no-verify -m "chore: install arbiter 0.3.4" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
 <ul class="small">
   <li>รันซ้ำได้: คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ เขียน workflow ใหม่</li>
   <li><b>โค้ดของ arbiter มีผลทันที</b> เพราะทุกโปรเจกต์เรียกจากโฟลเดอร์เดียวกัน ส่วน workflow ต้องรัน install ใหม่ และ<b>เปิดแชท Gemini ใหม่</b></li>
@@ -162,7 +162,7 @@ git commit --no-verify -m "chore: install arbiter 0.3.3" -- .arbiter/config.json
   floor/git/pre_commit.py  hook
   prompts/                 template ของ Claude (spec, answer, review, review_prev, dispute, spike_*)
   adapters/antigravity/workflows/   feature.md, spike.md ของ Gemini
-  install.py · tests/ (54 เทสต์ ใช้ fake Claude) · docs/ (คู่มือนี้)
+  install.py · tests/ (56 เทสต์ ใช้ fake Claude) · docs/ (คู่มือนี้)
   README.md · DIRECTION.md · LESSONS.md</code></pre>
 
 <div class="pager"></div>
