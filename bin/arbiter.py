@@ -89,7 +89,7 @@ class Card:
         """(model, effort, source) for review/dispute, decided at Gate 1. The user's words win (in the Gate 1
         approval, or at card start), else the spike card's recommendation (shown on the Gate 1 page), else config."""
         c = self.cfg.get("claude", {})
-        m = re.search(rf"\b({'|'.join(ac.USER_MODELS)})\b", said, re.I)
+        m = ac.MODEL_RE.search(said)
         e = re.search(r"\b(low|medium|high|xhigh|max)\b", said, re.I)
         if m or e:
             return ((m.group(1).lower() if m else c.get("review_model", "opus")),
@@ -608,7 +608,7 @@ def main():
     sp = sub.add_parser("spec")
     sp.add_argument("key", nargs="?")
     sp.add_argument("--local", nargs="+", help="งานที่ไม่มีการ์ด Jira: ข้อความโจทย์ของผู้ใช้ตามตัวอักษร")
-    sp.add_argument("--model", choices=ac.USER_MODELS, help="เฉพาะเมื่อผู้ใช้สั่งเอง (ค่าตั้งต้นจาก config)")
+    sp.add_argument("--model", type=ac.model_arg, metavar="MODEL", help="เฉพาะเมื่อผู้ใช้สั่งเอง (ค่าตั้งต้นจาก config)")
     sp.add_argument("--effort", choices=("low", "medium", "high", "xhigh", "max"), help="เฉพาะเมื่อผู้ใช้สั่งเอง")
     dp = sub.add_parser("dispute", help="แย้งผลตรวจด้วยหลักฐานจากคำสั่ง แทนการหาทางเลี่ยง")
     dp.add_argument("key")

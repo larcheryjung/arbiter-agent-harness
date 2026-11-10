@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.4 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.5 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -41,6 +41,7 @@
   <tr><th>repo</th><th>ติดตั้ง</th><th>หมายเหตุ</th></tr>
   <tr><td><code>C:\local-code-repo\hbs3\epolicy</code> (branch <code>dev</code>)</td><td>0.3.4</td><td>verify: <code>mvn test</code> (ไม่รวม integration) + spotless · docs_allow: <code>kong-workspace/docs/**</code>, <code>*.md</code>, <code>kong-workspace/*.md</code></td></tr>
   <tr><td><code>C:\local-code-repo\hbs3\hbs-strangler-service</code></td><td>0.3.4</td><td>ยังไม่มีโค้ด · <code>read_dirs</code> = hbs-legacy/hbs-web-core · docs_allow: <code>kong-workspace/**</code>, <code>*.md</code></td></tr>
+  <tr><td><code>C:\local-code-repo\hbs-legacy\hbs-web-core</code> (branch <code>develop</code>)</td><td>0.3.5</td><td>ติดตั้ง 10 พ.ย. (<code>546abc2f</code>) · verify: <code>devops/scripts/dev-build.ps1 -Clean</code> (Ant build ราว 90 วินาที ไม่มี unit test) · docs_allow: <code>kong-workspace/**</code>, <code>*.md</code> · repo แรกที่มีหลาย branch: branch ที่ไม่มี <code>.arbiter/config.json</code> ถูก hook บล็อกทุก commit · build เขียนทับ <code>.properties</code> ใน <code>web/WEB-INF/classes/</code> จึงต้องอยู่ใน scope_allow ด้วย</td></tr>
 </table></div>
 <p><b>การ์ดจริง 2 / 10</b>: KS-118 → <code>e3a4e5a</code> ($6.24, ไม่ถูกตีกลับ) · KS-160 → <code>4cb0dc3</code> ($9.52, ตีกลับ 3 รอบ, ทำให้เกิด v0.3.2–0.3.3)</p>
 <div class="callout warn"><span class="t">เกณฑ์ยุติที่ตกลงไว้</span>
@@ -59,7 +60,8 @@
   <tr><td><code>2a7c4ed</code> v0.3.1</td><td>9 พ.ย.</td><td>Story / Epic / Release ไม่บังคับ (Claude แนะนำ คุณตัดสิน)</td></tr>
   <tr><td><code>992f3f8</code> v0.3.2</td><td>9 พ.ย.</td><td>ไฟล์ใน scope_allow เป็นงานของการ์ดแม้อยู่ใน docs_allow · ไม่มีไฟล์เปลี่ยน = BLOCKED · ดึงการ์ด KS ขึ้นบอร์ดเอง · 47 เทสต์</td></tr>
   <tr><td><code>3f510e2</code> v0.3.3</td><td>9 พ.ย.</td><td>ปลด deadlock: decisions.md ผูก reviewer · SPEC_ISSUE · dispute (UPHOLD / REVISE_SPEC / NEED_HUMAN) · park / unpark · ESCALATE 3 ทาง · spec ใหม่รีเซ็ตเพดาน · model policy (spec Opus High, รีวิวแจ้งที่ Gate 1) · workflow ห้ามเลี่ยงเครื่องตรวจและห้ามแต่งข้อมูล · 54 เทสต์ · คู่มือหลายหน้า</td></tr>
-  <tr><td>v0.3.4</td><td>10 พ.ย.</td><td>สั่งใช้ <code>fable</code> ได้ตอนเริ่มการ์ดและในคำอนุมัติ Gate 1 (เดิมคำว่า fable ในคำอนุมัติถูกเมินแล้วใช้ opus) · ค่าตั้งต้นและคำแนะนำจาก spike ไม่เปลี่ยน · 56 เทสต์</td></tr>
+  <tr><td><code>9d1e09f</code> v0.3.4</td><td>10 พ.ย.</td><td>สั่งใช้ <code>fable</code> ได้ตอนเริ่มการ์ดและในคำอนุมัติ Gate 1 (เดิมคำว่า fable ในคำอนุมัติถูกเมินแล้วใช้ opus) · ค่าตั้งต้นและคำแนะนำจาก spike ไม่เปลี่ยน · 56 เทสต์</td></tr>
+  <tr><td>v0.3.5</td><td>10 พ.ย.</td><td>รับชื่อรุ่นเต็ม (เช่น <code>claude-fable-5-1</code>) ตอนเริ่มการ์ดและในคำอนุมัติ Gate 1 · <code>sessions.jsonl</code> เพิ่ม <code>model_used</code> = รุ่นจริงที่ CLI รายงาน · ติดตั้งที่ hbs-web-core (pilot ที่สาม) · 59 เทสต์</td></tr>
 </table></div>
 
 <h2>Roadmap</h2>

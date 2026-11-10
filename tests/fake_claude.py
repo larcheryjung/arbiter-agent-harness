@@ -1,7 +1,8 @@
 """Stand-in for `claude -p --output-format stream-json`. Pops responses from $FAKE_DIR/queue.json, logs calls.
 
 A queued response may carry "tools": [{"name", "input", "ok"}]; each becomes a tool_use + tool_result event pair
-before the final result event, so arbiter's tool-call checks see them like real stream output.
+before the final result event, so arbiter's tool-call checks see them like real stream output. "init_model" becomes
+the `model` of the init event.
 """
 import json
 import os
@@ -20,7 +21,10 @@ resp = queue.pop(0) if queue else {"is_error": True, "result": "queue empty"}
 resp.setdefault("session_id", f"sess-{len(calls)}")
 resp.setdefault("is_error", False)
 sys.stdout.reconfigure(encoding="utf-8")
-print(json.dumps({"type": "system", "subtype": "init", "session_id": resp["session_id"]}))
+init = {"type": "system", "subtype": "init", "session_id": resp["session_id"]}
+if "init_model" in resp:  # the real CLI reports the model it resolved the alias to
+    init["model"] = resp.pop("init_model")
+print(json.dumps(init))
 for i, t in enumerate(resp.pop("tools", [])):
     tid = f"tu_{i}"
     print(json.dumps({"type": "assistant", "message": {"content": [

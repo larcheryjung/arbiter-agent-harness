@@ -350,6 +350,35 @@ class ArbiterTest(Base):
         args = self.calls()[-1]["args"]
         self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]), ("fable", "high"))
 
+    def test_full_model_name_at_card_start_and_bad_name_rejected(self):
+        self.assertIsNone(self.h("spec", "KS-1", "--model", "gpt-5")[0])  # argparse refuses; nothing ran
+        self.assertIsNone(self.h("spec", "KS-1", "--model", "claude-code")[0])
+        self.assertEqual(self.calls(), [])
+        self.queue([spec_resp()])
+        st, out = self.h("spec", "KS-1", "--model", "claude-fable-5-1")
+        args = self.calls()[-1]["args"]
+        self.assertEqual(args[args.index("--model") + 1], "claude-fable-5-1")
+        self.assertIn("Claude ขั้นรีวิว: claude-fable-5-1 · high (คุณสั่งตอนเริ่มการ์ด)", out)
+
+    def test_full_model_name_in_gate1_approval(self):
+        self.queue([spec_resp(), review_resp("PASS")])
+        self.h("spec", "KS-1")
+        st, out = self.h("approve", "KS-1", "อนุมัติ Gate 1 ใช้ claude-fable-5-1 medium")
+        self.assertIn("Claude ขั้นรีวิว: claude-fable-5-1 · medium (คุณสั่งตอนอนุมัติ Gate 1)", out)
+        self.write("src/app.py", "print('a')\n")
+        self.h("review", "KS-1")
+        args = self.calls()[-1]["args"]
+        self.assertEqual((args[args.index("--model") + 1], args[args.index("--effort") + 1]),
+                         ("claude-fable-5-1", "medium"))
+
+    def test_sessions_log_records_the_model_the_cli_resolved(self):
+        self.queue([dict(spec_resp("1. สีอะไร? [default: แดง]"), init_model="claude-opus-5-5"), spec_resp()])
+        self.h("spec", "KS-1")
+        self.h("answer", "KS-1", "แดง")
+        rows = [json.loads(x) for x in self.card("sessions.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([(r["model"], r["model_used"]) for r in rows],
+                         [("opus", "claude-opus-5-5"), ("opus", None)])  # None = the CLI did not say
+
     def test_default_model_is_opus_high_everywhere(self):
         self.queue([spec_resp(), review_resp("PASS")])
         st, out = self.h("spec", "KS-1")

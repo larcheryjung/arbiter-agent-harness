@@ -1,4 +1,5 @@
 """Calling `claude -p` for arbiter: prompt templates, the read-only tool set, stream parsing, language. Stdlib only."""
+import argparse
 import json
 import os
 import re
@@ -16,6 +17,18 @@ DENY_TOOLS = "Edit,Write,NotebookEdit,Bash,PowerShell"
 # Model aliases the user may name (`spec --model`, or inside the Gate 1 approval). `fable` is opt-in only: it is
 # never a default and spike cards may not recommend it (arbiter_spike.MODELS) while access to it is a trial.
 USER_MODELS = ("haiku", "sonnet", "opus", "fable")
+# The user may also pin a version with a full model name (claude-fable-5-1). Existence is not checked here: a wrong
+# name fails on the first `claude -p` of that step. The digit keeps words like "claude-code" from matching.
+MODEL_ID = r"claude-[a-z]+-\d[a-z0-9-]*"
+MODEL_RE = re.compile(rf"\b({MODEL_ID}|{'|'.join(USER_MODELS)})\b", re.I)
+
+
+def model_arg(text):
+    """argparse type for --model: an alias or a full model name, lower-cased."""
+    m = MODEL_RE.fullmatch(text.strip())
+    if not m:
+        raise argparse.ArgumentTypeError(f"ต้องเป็น {' / '.join(USER_MODELS)} หรือชื่อรุ่นเต็ม เช่น claude-fable-5-1")
+    return m.group(1).lower()
 # Written in the target language itself: a model reading a Thai prompt drifts back to Thai otherwise.
 LANG_RULES = {
     "th": "สำคัญ: เขียนเนื้อหาทั้งหมดเป็นภาษาไทย ชื่อไฟล์ คลาส เมธอด คำสั่ง และศัพท์เทคนิคใช้ตามต้นฉบับ "
@@ -68,12 +81,14 @@ def lang_rule(code):
 
 def parse_stream(out):
     """Fold `claude -p --output-format stream-json` into the final result event + every tool call and its outcome."""
-    calls, result = {}, None
+    calls, result, model_used = {}, None, None
     for line in (out or "").splitlines():
         try:
             ev = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if ev.get("type") == "system" and ev.get("subtype") == "init":
+            model_used = ev.get("model") or model_used  # what the CLI resolved the alias to (fable -> claude-fable-5-2)
         content = (ev.get("message") or {}).get("content")
         for c in content if isinstance(content, list) else []:
             if c.get("type") == "tool_use":
@@ -84,6 +99,7 @@ def parse_stream(out):
             result = ev
     if result is not None:
         result["tool_calls"] = list(calls.values())
+        result["model_used"] = model_used
     return result
 
 
@@ -114,8 +130,8 @@ def call(root, ccfg, prompt, tools, model, *, log, mode, key, resume=None, add_d
                             and str(t["input"].get("issue_key", "")).upper() == key
                             for t in data["tool_calls"])
     with log.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"at": now(), "mode": mode, "model": model, "effort": effort,
-                             "session_id": data.get("session_id"),
+        fh.write(json.dumps({"at": now(), "mode": mode, "model": model, "model_used": data.get("model_used"),
+                             "effort": effort, "session_id": data.get("session_id"),
                              "resumed": resume, "is_error": bool(data.get("is_error")),
                              "cost_usd": data.get("total_cost_usd"),
                              "denials": len(data.get("permission_denials") or []),
