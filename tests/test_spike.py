@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_arbiter import JIRA_OK, Base, review_resp, spec_resp  # noqa: E402
+from test_arbiter import JIRA_OK, Base, hc, review_resp, spec_resp  # noqa: E402
 
 SOLUTION = "# SPIKE-1: สถานะข้อมูลขาย\n## ความเข้าใจโจทย์\nทีม TA อยากเห็นสถานะ\n## แนะนำ\nทาง A"
 
@@ -48,11 +48,13 @@ class SpikeTest(Base):
         self.assertEqual(st, "NEEDS_ANSWERS", out)
         self.assertIn("TA ต้องดูกี่สถานะ?", out)
         self.assertIn("▶ สิ่งที่คุณต้องทำ: ตอบ ถามกลับ หรือแย้ง", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))  # v0.3.6: the Builder adds its own summary on decision pages
         self.assertEqual(self.sp("intent.md").read_text(encoding="utf-8"), "อยากรู้ว่าข้อมูลขายเข้า HBS หรือยัง\n")
         self.assertEqual(self.h("spike", "approve", "SPIKE-1", "อนุมัติ")[0], "BLOCKED")  # questions pending
         st, out = self.h("spike", "answer", "SPIKE-1", "ทำไมต้อง 3 สถานะ")
         self.assertEqual(st, "READY_FOR_PLAN_APPROVAL", out)
         self.assertIn("Claude ตอบ:\nได้ครับ ใช้ 3 สถานะ", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
         self.assertIn("ได้ครับ ใช้ 3 สถานะ", self.sp("replies.md").read_text(encoding="utf-8"))
         self.assertIn("--resume", self.calls()[1]["args"])
         self.assertIn("ทำไมต้อง 3 สถานะ", self.calls()[1]["prompt"])
@@ -60,13 +62,16 @@ class SpikeTest(Base):
         self.assertEqual(st, "READY_FOR_CARDS_APPROVAL", out)
         self.assertIn("| C2 | Task | การ์ด C2 | 3 | sonnet · medium | repo | C1 |", out)
         self.assertIn("แต้มรวม 6", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
         st, out = self.h("spike", "approve", "SPIKE-1", "อนุมัติการ์ด")
         self.assertEqual(st, "APPROVED_CARDS", out)
+        self.assertNotIn(hc.SUMMARY_HEAD, out)  # card text goes to Jira verbatim: no summary here
         self.assertIn('link SPIKE-1 "E=KS-? C1=KS-? C2=KS-?"', out)
         self.assertEqual(self.h("spike", "link", "SPIKE-1", "E=KS-10 C1=KS-11")[0], "BLOCKED")  # C2 missing
         self.assertIn("ไม่ต้องดึงการ์ดขึ้นบอร์ดเอง", out)
         st, out = self.h("spike", "link", "SPIKE-1", "E=KS-10 C1=KS-11 C2=KS-12")
         self.assertEqual(st, "SPIKE_DONE", out)
+        self.assertNotIn(hc.SUMMARY_HEAD, out)
         self.assertIn("(ดึงการ์ด KS-11, KS-12 ขึ้นบอร์ด 5335 แล้ว)", out)  # the epic stays off the board
         board = (self.fake / "board.jsonl").read_text(encoding="utf-8")
         self.assertEqual(json.loads(board), {"board": "5335", "issues": ["KS-11", "KS-12"]})

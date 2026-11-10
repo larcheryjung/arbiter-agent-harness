@@ -90,6 +90,9 @@ class Base(unittest.TestCase):
     def card(self, name, key="KS-1"):
         return self.repo / ".arbiter" / "tasks" / key / name
 
+    def nxt(self, out):
+        return next((ln for ln in out.splitlines() if ln.startswith("NEXT: ")), "")
+
     def cfg(self, commit=True, **kw):
         p = self.repo / ".arbiter" / "config.json"
         c = json.loads(p.read_text(encoding="utf-8"))
@@ -152,6 +155,41 @@ class ArbiterTest(Base):
         log = self.git("log", "-1", "--format=%B").stdout
         self.assertIn(f"Arbiter-Tree: {ev['tree']}", log)
         self.assertEqual(self.git("status", "--porcelain").stdout.strip(), "")
+
+    def test_builder_summary_is_asked_on_decision_pages_only(self):  # v0.3.6
+        for name in ("feature.md", "spike.md"):  # the workflow rule and NEXT name the same heading
+            self.assertIn(hc.SUMMARY_HEAD, (self.repo / ".agent" / "workflows" / name).read_text(encoding="utf-8"))
+        self.queue([spec_resp(tools=[]), spec_resp("1. สีอะไร? [default: แดง]"), spec_resp()])
+        st, out = self.h("spec", "KS-1")
+        self.assertEqual(st, "ERROR", out)  # a summary of an error would be a guessed cause
+        self.assertNotIn(hc.SUMMARY_HEAD, out)
+        st, out = self.h("spec", "KS-1")
+        self.assertEqual(st, "NEEDS_ANSWERS", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
+        st, out = self.h("answer", "KS-1", "แดง")
+        self.assertEqual(st, "READY_FOR_GATE1", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
+        self.assertNotIn(hc.SUMMARY_HEAD, out.split("STATUS: ")[0])  # only an instruction, never in the shown text
+        self.assertEqual(self.h("approve", "KS-1", "อนุมัติ Gate 1")[0], "APPROVED_GATE1")
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "BLOCKED", out)  # nothing changed yet
+        self.assertNotIn(hc.SUMMARY_HEAD, out)
+        self.write("src/app.py", "print('a')\n")
+        self.queue([review_resp("FAIL", "- ผิด 1"), review_resp("SPEC_ISSUE"), review_resp("PASS")])
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "FAIL", out)  # the Builder just fixes: nothing for the user to rule on
+        self.assertNotIn(hc.SUMMARY_HEAD, out)
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "SPEC_ISSUE", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
+        st, out = self.h("review", "KS-1")
+        self.assertEqual(st, "READY_FOR_GATE2", out)
+        self.assertIn(hc.SHOW_SUM, self.nxt(out))
+        self.write("src/app.py", "print('b')\n")
+        st, out = self.h("commit", "KS-1", "อนุมัติ Gate 2")
+        self.assertEqual(st, "STALE", out)
+        self.assertNotIn(hc.SUMMARY_HEAD, out)
+        self.assertIn(hc.SHOW, self.nxt(out))
 
     def test_spec_without_jira_read_is_error_and_writes_no_spec(self):
         self.queue([spec_resp(tools=[]), spec_resp()])

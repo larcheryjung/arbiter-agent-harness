@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.5 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -28,7 +28,7 @@ Gate ต้องดูอะไร และหลักฐานถูกผ�
 <div class="tbl"><table>
   <tr><th>ใคร</th><th>ทำ</th><th>ห้ามทำ</th></tr>
   <tr><td><span class="r r-human">คุณ</span></td><td>เล่าโจทย์ ตอบคำถาม อนุมัติ Gate 1 / Gate 2 ตัดสินเมื่องานติด commit <code>config.json</code></td><td>-</td></tr>
-  <tr><td><span class="r r-gemini">Gemini</span><br><span class="small muted">Antigravity IDE</span></td><td>รันคำสั่ง <code>arbiter</code> ทำตาม <code>NEXT:</code> เขียนงานเฉพาะไฟล์ใน <code>scope_allow</code> แสดงข้อความของ arbiter ตามตัวอักษร สร้างและขยับการ์ดบน Jira</td><td>เขียน prompt ให้ Claude · ตัดสินเองว่างานผ่าน · แก้ไฟล์ใน <code>.arbiter/</code> · อ่านซอร์ส arbiter · commit โค้ดเอง · <code>git checkout/restore/reset/stash/clean</code> · แต่งข้อมูลที่ไม่มีที่มา</td></tr>
+  <tr><td><span class="r r-gemini">Gemini</span><br><span class="small muted">Antigravity IDE</span></td><td>รันคำสั่ง <code>arbiter</code> ทำตาม <code>NEXT:</code> เขียนงานเฉพาะไฟล์ใน <code>scope_allow</code> แสดงข้อความของ arbiter ตามตัวอักษร แล้วเขียน "สรุปจาก Builder" ต่อท้ายเองในหน้าที่รอคุณตัดสิน สร้างและขยับการ์ดบน Jira</td><td>เขียน prompt ให้ Claude · ตัดสินเองว่างานผ่าน · ใช้สรุปแทนข้อความของ arbiter · ตอบหรืออนุมัติแทนคุณ · แก้ไฟล์ใน <code>.arbiter/</code> · อ่านซอร์ส arbiter · commit โค้ดเอง · <code>git checkout/restore/reset/stash/clean</code> · แต่งข้อมูลที่ไม่มีที่มา</td></tr>
   <tr><td><span class="r r-machine">arbiter</span><br><span class="small muted">Python script</span></td><td>สร้าง prompt จาก template · รัน verify · ตรวจ scope · นับรอบ · อ่าน verdict ของ Claude · commit · ดึงการ์ดขึ้นบอร์ด</td><td>-</td></tr>
   <tr><td><span class="r r-claude">Claude</span><br><span class="small muted"><code>claude -p</code></span></td><td>ร่าง spec และคำถาม · รีวิว diff · ชี้ขาดข้อโต้แย้ง · ถกแผนใน spike</td><td>แก้ไฟล์ใดๆ (มีแค่ Read / Grep / Glob และ Jira แบบอ่านอย่างเดียว)</td></tr>
 </table></div>
@@ -105,11 +105,12 @@ Claude ขั้นรีวิว: sonnet · medium (ตามที่กา�
 <span class="user-line">▶ สิ่งที่คุณต้องทำ: อ่าน spec แล้วพิมพ์ "อนุมัติ Gate 1" เพื่อให้เริ่มเขียนโค้ด หรือพิมพ์สิ่งที่ต้องการให้แก้ใน spec</span>
 
 STATUS: READY_FOR_GATE1
-NEXT: แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน ... approve KS-160 "&lt;ข้อความอนุมัติของผู้ใช้ ห้ามแก้&gt;"</div>
+NEXT: แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร (ห้ามตัด ห้ามแก้) แล้วเขียนต่อท้ายเองทันทีในข้อความเดียวกันใต้หัวข้อ `สรุปจาก Builder (&lt;ชื่อ model ของคุณ&gt;)`: ... แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน ... approve KS-160 "&lt;ข้อความอนุมัติของผู้ใช้ ห้ามแก้&gt;"</div>
 </div>
 <div class="tbl"><table>
   <tr><th>บรรทัด</th><th>เขียนถึงใคร</th><th>ความหมาย</th></tr>
-  <tr><td>เนื้อหาข้างบน</td><td>คุณ (ผ่าน Gemini)</td><td>Gemini ต้องแสดง<b>ตามตัวอักษร</b> ห้ามสรุป ห้ามแปล ห้ามอธิบายเพิ่ม</td></tr>
+  <tr><td>เนื้อหาข้างบน</td><td>คุณ (ผ่าน Gemini)</td><td>Gemini ต้องแสดง<b>ตามตัวอักษร</b>ก่อนเสมอ ห้ามตัด ห้ามแก้ ห้ามแปล</td></tr>
+  <tr><td><code>สรุปจาก Builder (…)</code></td><td>คุณ</td><td>ตั้งแต่ v0.3.6: ในหน้าที่รอคุณตัดสิน (คำถาม, Gate 1, Gate 2, ESCALATE, SPEC_ISSUE, NEEDS_DECISION, ผล dispute, แผนและการ์ดของ spike) Gemini เขียนสรุปต่อท้ายเองโดยไม่ต้องรอคุณถาม ในสไตล์ของมันเอง ความเห็นใส่ได้ถ้ากำกับว่าเป็นความเห็น <b>ถ้าสรุปขัดกับข้อความข้างบน ให้ถือข้อความข้างบน</b> หน้า ERROR / BLOCKED / STALE ไม่มีสรุป (กันการเดาสาเหตุ)</td></tr>
   <tr><td><code>▶ สิ่งที่คุณต้องทำ</code></td><td>คุณ</td><td>บอกว่าต้องพิมพ์อะไรต่อ มีทุกหน้าที่รอคุณ</td></tr>
   <tr><td><code>STATUS:</code></td><td>Gemini</td><td>ผลของคำสั่ง (ดูรายการทั้งหมดใน <a href="reference.html#status">อ้างอิง</a>)</td></tr>
   <tr><td><code>NEXT:</code></td><td>Gemini</td><td>คำสั่งเดียวที่ Gemini ทำได้ต่อจากนี้</td></tr>

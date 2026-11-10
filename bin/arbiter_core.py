@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-VERSION = "0.3.5"
+VERSION = "0.3.6"
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 BLOCK_RE = re.compile(r"```arbiter[ \t]*\r?\n(.*?)```", re.S)
 KEY_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
@@ -241,6 +241,14 @@ def head_or_empty(root):
     return "HEAD" if git("rev-parse", "--verify", "-q", "HEAD", cwd=root, check=False).returncode == 0 else EMPTY_TREE
 
 
+SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
+SUMMARY_HEAD = "สรุปจาก Builder"  # the workflows (rule 3) name the same heading
+# Pages the human reads and rules on: verbatim first, then the Builder adds its own summary without being asked.
+# Never used on ERROR/BLOCKED/STALE pages, where a summary would be a guessed cause (LESSONS KS-118).
+SHOW_SUM = (f"{SHOW} (ห้ามตัด ห้ามแก้) แล้วเขียนต่อท้ายเองทันทีในข้อความเดียวกันใต้หัวข้อ "
+            f"`{SUMMARY_HEAD} (<ชื่อ model ของคุณ>)`: สรุปในสไตล์ของคุณ ข้อเท็จจริงต้องมาจากข้อความข้างบน"
+            "หรือสิ่งที่คุณตรวจเองในงานนี้ ห้ามข้าม finding หรือรายการที่ยังไม่ได้ทดสอบ "
+            "ความเห็นของคุณใส่ได้ถ้ากำกับว่าเป็นความเห็น ห้ามตอบหรืออนุมัติแทนผู้ใช้")
 NOTICES = []  # side results (e.g. moving a card onto the board) printed inside the next say() body, shown verbatim
 
 USER_DEFAULT = {

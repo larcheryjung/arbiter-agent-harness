@@ -23,7 +23,7 @@ DEFAULTS = {"model": "opus", "effort": "high", "repos": {}, "read_dirs": [], "ma
             "max_rounds_resume": 6, "budget_usd": 15}
 POINTS, TYPES = (1, 2, 3, 5, 8), ("Story", "Task")
 MODELS, EFFORTS = ("haiku", "sonnet", "opus"), ("low", "medium", "high")  # what a card may recommend (no fable)
-SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
+SHOW, SHOW_SUM = hc.SHOW, hc.SHOW_SUM
 STOP = "แสดงข้อความนี้ให้ผู้ใช้ แล้วหยุดรอคำสั่ง"
 
 
@@ -306,7 +306,7 @@ def present(sp, reply="", warns=()):
                user=f"ไม่ต้องทำอะไร Gemini จะสร้างการ์ด {len(ids)} ใบใน Jira ให้")
     elif sp.plan_ok() and sp.p("cards.json").exists():
         hc.say("READY_FOR_CARDS_APPROVAL", head + sp.text("cards.md") + warn + footer(sp),
-               f"{SHOW} แล้วรอ ถ้าผู้ใช้อนุมัติการ์ด ให้รัน {SELF} approve {sp.key} \"<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>\" "
+               f"{SHOW_SUM} แล้วรอ ถ้าผู้ใช้อนุมัติการ์ด ให้รัน {SELF} approve {sp.key} \"<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>\" "
                f"ถ้าผู้ใช้ถามหรือขอแก้ ให้รัน {ans}",
                user='ตรวจรายการการ์ดแล้วพิมพ์ "อนุมัติการ์ด" เพื่อให้ Gemini สร้างใน Jira หรือพิมพ์สิ่งที่อยากแก้')
     elif sp.plan_ok():
@@ -316,11 +316,11 @@ def present(sp, reply="", warns=()):
     elif sp.p("questions.md").exists():
         q = re.sub(r"^<!--.*?-->\n", "", sp.text("questions.md"))
         hc.say("NEEDS_ANSWERS", f"{head}{sp.text('solution.md')}\n---\n\nคำถาม ({sp.key}):\n{q}{footer(sp)}",
-               f"{SHOW} แล้วรอผู้ใช้ จากนั้นรัน {ans} (ถ้าผู้ใช้แนบไฟล์ ให้เพิ่ม --file <path> ต่อไฟล์)",
+               f"{SHOW_SUM} แล้วรอผู้ใช้ จากนั้นรัน {ans} (ถ้าผู้ใช้แนบไฟล์ ให้เพิ่ม --file <path> ต่อไฟล์)",
                user="ตอบ ถามกลับ หรือแย้งได้ในแชทนี้ ข้อที่ไม่ตอบจะใช้ค่า [default] ของข้อนั้น")
     else:
         hc.say("READY_FOR_PLAN_APPROVAL", f"{head}{sp.text('solution.md')}{footer(sp)}",
-               f"{SHOW} แล้วรอ ถ้าผู้ใช้อนุมัติแผน ให้รัน {SELF} approve {sp.key} \"<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>\" "
+               f"{SHOW_SUM} แล้วรอ ถ้าผู้ใช้อนุมัติแผน ให้รัน {SELF} approve {sp.key} \"<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>\" "
                f"ถ้าผู้ใช้ถาม แย้ง หรือขอแก้ ให้รัน {ans}",
                user='อ่านแผนแล้วพิมพ์ "อนุมัติแผน" เพื่อให้ซอยการ์ด หรือพิมพ์สิ่งที่อยากถาม แย้ง หรือแก้')
     return 0

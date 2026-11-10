@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.5 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -118,7 +118,7 @@
 <ol class="small">
   <li>เริ่มด้วย <code>spec</code> หรือ <code>status</code> · ใส่ <code>--model/--effort</code> เฉพาะเมื่อคุณสั่ง</li>
   <li>ทำตาม <code>STATUS</code> / <code>NEXT</code> เท่านั้น · เรียก arbiter ตรงๆ ห้ามห่อด้วย <code>python -c</code></li>
-  <li>แสดงข้อความของ arbiter ตามตัวอักษร รวมบรรทัด ▶ ห้ามสรุป ตีความ หรือแนะนำคำตอบ</li>
+  <li>แสดงข้อความของ arbiter ตามตัวอักษรก่อนเสมอ รวมบรรทัด ▶ ห้ามใช้สรุปแทน · ถ้า <code>NEXT</code> สั่ง ให้เขียน <code>สรุปจาก Builder (&lt;ชื่อ model&gt;)</code> ต่อท้ายเองทันที (ข้อเท็จจริงจากข้อความข้างบนหรือที่ตรวจเอง ห้ามข้าม finding ความเห็นต้องกำกับ ห้ามตอบหรืออนุมัติแทนคุณ) · หน้า ERROR / BLOCKED / STALE ไม่สรุป ไม่ตีความ</li>
   <li>ส่งข้อความของคุณตามที่พิมพ์จริง</li>
   <li>ห้ามเขียน prompt ให้ Claude · ห้ามแก้ <code>.arbiter/</code> · ห้ามอ่านซอร์ส arbiter</li>
   <li>แก้เฉพาะไฟล์ใน <code>scope_allow</code></li>
@@ -136,7 +136,7 @@
   --read-dir "C:\local-code-repo\hbs-legacy\hbs-web-core"     &lt;-- ไม่บังคับ: repo อื่นที่ /spike อ่าน
 
 # แล้วคน commit เอง (เฉพาะ path เหล่านี้ ไม่กวาดไฟล์อื่นที่ stage ค้างไว้)
-git commit --no-verify -m "chore: install arbiter 0.3.5" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
+git commit --no-verify -m "chore: install arbiter 0.3.6" -- .arbiter/config.json .arbiter/.gitignore .agent/workflows/</code></pre>
 <ul class="small">
   <li>รันซ้ำได้: คง config เดิม เพิ่ม key ที่เวอร์ชันใหม่ต้องใช้ เขียน workflow ใหม่</li>
   <li><b>โค้ดของ arbiter มีผลทันที</b> เพราะทุกโปรเจกต์เรียกจากโฟลเดอร์เดียวกัน ส่วน workflow ต้องรัน install ใหม่ และ<b>เปิดแชท Gemini ใหม่</b></li>

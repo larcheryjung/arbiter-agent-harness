@@ -27,13 +27,13 @@ REVIEW_TOOLS = ac.BUILTIN_TOOLS
 USER_ESCALATE = ('เลือกหนึ่งทาง: "ทำต่อ: <คำตัดสินของคุณ>" (reviewer ต้องยึดคำตัดสินนี้) · '
                  '"แก้ spec: <สิ่งที่จะแก้>" (แล้วอนุมัติ Gate 1 ใหม่) · "พักการ์ด"')
 SHELL_META = re.compile(r"[|&;<>`]")
-SHOW = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร"
+SHOW, SHOW_SUM = hc.SHOW, hc.SHOW_SUM
 MAX_PROVE = 3
 
 
 def decide_next(key):
     """NEXT for every page where the user must rule: continue with a binding decision, revise the spec, or park."""
-    return (f'{SHOW} หยุดแก้เอง แล้วรอผู้ใช้ตัดสิน: ถ้าให้ทำต่อ ให้รัน {SELF} review {key} --continue "<ข้อความของผู้ใช้>" · '
+    return (f'{SHOW_SUM} หยุดแก้เอง แล้วรอผู้ใช้ตัดสิน: ถ้าให้ทำต่อ ให้รัน {SELF} review {key} --continue "<ข้อความของผู้ใช้>" · '
             f'ถ้าให้แก้ spec ให้รัน {SELF} answer {key} "<ข้อความของผู้ใช้ ห้ามแก้>" · '
             f'ถ้าให้พักการ์ด ให้รัน {SELF} park {key} "<ข้อความของผู้ใช้>"')
 
@@ -160,7 +160,7 @@ def spec_result(card, data, fresh=True):
     if q and q.upper() != "NONE":
         card.p("questions.md").write_text(f"<!-- {now()} -->\n{q}\n", encoding="utf-8")
         hc.say("NEEDS_ANSWERS", f"QUESTIONS ({card.key}):\n{q}",
-               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอคำตอบ จากนั้นรัน '
+               f'{SHOW_SUM} แล้วรอคำตอบ จากนั้นรัน '
                f'{SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"',
                user="ตอบคำถามข้างบนในแชทนี้ ข้อที่ไม่ตอบจะใช้ค่า [default] ของข้อนั้น")
         return 0
@@ -170,7 +170,7 @@ def spec_result(card, data, fresh=True):
     warn += (f"\n\nClaude ขั้นรีวิว: {rm} · {re_} ({src}) ถ้าจะใช้ model อื่น ให้บอกพร้อมคำอนุมัติ "
              f'เช่น "อนุมัติ Gate 1 ใช้ opus high"')
     hc.say("READY_FOR_GATE1", f"SPEC {card.key} ({card.rel}/spec.md):\n\n{s['SPEC']}{warn}",
-           f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
+           f'{SHOW_SUM} แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
            f'{SELF} approve {card.key} "<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>" '
            f'ถ้าผู้ใช้ขอแก้ ให้รัน {SELF} answer {card.key} "<ข้อความของผู้ใช้ ห้ามแก้>"',
            user='อ่าน spec แล้วพิมพ์ "อนุมัติ Gate 1" เพื่อให้เริ่มเขียนโค้ด หรือพิมพ์สิ่งที่ต้องการให้แก้ใน spec')
@@ -379,7 +379,7 @@ def cmd_review(a):
         card.p("gate2.md").write_text(page, encoding="utf-8")
         hc.write_json(card.p("state.json"), st)
         hc.say("READY_FOR_GATE2", page,
-               f'แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
+               f'{SHOW_SUM} แล้วรอ ถ้าผู้ใช้อนุมัติ ให้รัน '
                f'{SELF} commit {card.key} "<ข้อความอนุมัติของผู้ใช้ ห้ามแก้>" '
                f"ถ้าผู้ใช้สั่งแก้ ให้แก้ตามนั้นแล้วรัน {SELF} review {card.key}",
                user='ตรวจผลข้างบน แล้วพิมพ์ "อนุมัติ Gate 2" เพื่อ commit หรือพิมพ์สิ่งที่ต้องแก้')
@@ -455,7 +455,7 @@ def cmd_dispute(a):
     head = f"ข้อโต้แย้งครั้งที่ {n}: {claim} (ยังไม่ยืนยัน)\n" + "\n".join(rows) + f"\n\nชี้ขาด: {ruling}\n{reason}"
     if ruling == "UPHOLD":
         hc.say("DISPUTE_UPHELD", f"{head}\n\nทางที่ทำตามได้:\n{proposal}",
-               f"{SHOW} แล้วแก้งานตามผลตรวจเดิมและทางข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) "
+               f"{SHOW_SUM} แล้วแก้งานตามผลตรวจเดิมและทางข้างบน (ห้ามแก้ spec.md หรือไฟล์ใน .arbiter/) "
                f"แล้วรัน {SELF} review {card.key}",
                user='ไม่ต้องทำอะไร Gemini จะแก้ต่อ · ถ้าไม่เห็นด้วยกับผลชี้ขาด พิมพ์ "ทำต่อ: <คำตัดสิน>" หรือ "แก้ spec: ..."')
     elif ruling == "REVISE_SPEC":
@@ -523,7 +523,7 @@ def cmd_commit(a):
     drift = hc.code_drift(card.root, ev["tree"], tree, card.docs, keep)  # side docs and .arbiter/ may move freely
     if drift:
         hc.say("STALE", "ไฟล์เหล่านี้เปลี่ยนหลังจาก review ผ่านแล้ว:\n" + "\n".join(f"- {f}" for f in drift),
-               f"แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร ห้ามแก้ ย้อน stash หรือลบไฟล์เหล่านี้เอง แล้วรอ "
+               f"{SHOW} ห้ามแก้ ย้อน stash หรือลบไฟล์เหล่านี้เอง แล้วรอ "
                f"ถ้าผู้ใช้สั่งให้ตรวจใหม่ ให้รัน {SELF} review {card.key}",
                user='ดูว่าไฟล์ข้างบนใครแก้ ถ้าแก้ได้ พิมพ์ "review ใหม่" เพื่อตรวจรอบใหม่ ถ้าไม่ควรแก้ ให้บอก Gemini ว่าจะจัดการอย่างไร')
         return 0
@@ -559,9 +559,9 @@ def cmd_commit(a):
     sha = hc.git("rev-parse", "--short", "HEAD", cwd=card.root).strip()
     body, user = f"commit {sha}: {card.key}", "ไม่ต้องทำอะไร งานนี้เสร็จแล้ว"
     if card.local:
-        nxt = "แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร การ์ด LOCAL ไม่มีบน Jira ห้ามแตะ Jira"
+        nxt = f"{SHOW} การ์ด LOCAL ไม่มีบน Jira ห้ามแตะ Jira"
     else:
-        nxt = (f"แสดงข้อความข้างบนให้ผู้ใช้ตามตัวอักษร แล้วขยับการ์ด {card.key} บน Jira ตามกฎ lifecycle "
+        nxt = (f"{SHOW} แล้วขยับการ์ด {card.key} บน Jira ตามกฎ lifecycle "
                f"(Story ไป UAT / QA, Task ไป Done)")
         user = f"ไม่ต้องทำอะไร Gemini จะขยับการ์ด {card.key} บน Jira ให้"
     if pending_docs:

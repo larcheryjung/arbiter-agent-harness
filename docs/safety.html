@@ -14,7 +14,7 @@
 <div class="wrap">
 <nav class="toc" aria-label="สารบัญ">
   <div class="brand">Arbiter Handbook</div>
-  <div class="ver">v0.3.5 · 10 พ.ย. 2026</div>
+  <div class="ver">v0.3.6 · 10 พ.ย. 2026</div>
   <div class="links"><a href="index.html">เริ่มที่นี่</a><a href="concepts.html">แนวคิดและบทบาท</a><a href="feature.html">/feature</a><a href="spike.html">/spike</a><a href="stuck.html">เมื่องานติด</a><a href="safety.html">อะไรบังคับจริง</a><a href="cases.html">กรณีศึกษา</a><a href="reference.html">อ้างอิง</a><a href="roadmap.html">Roadmap</a></div>
 </nav>
 <main>
@@ -48,7 +48,8 @@
 <h2 id="prompt-only">กติกาใน prompt (เฝ้าดูได้ แต่ยังบังคับไม่ได้)</h2>
 <div class="tbl"><table>
   <tr><th>กติกา</th><th>เคยถูกฝ่า</th></tr>
-  <tr><td>Gemini แสดงข้อความของ arbiter ตามตัวอักษร ห้ามสรุปหรือแนะนำคำตอบ</td><td>KS-118 (แต่งเหตุผลเอง) · KS-160 (สรุป spec เองแทนการแสดง)</td></tr>
+  <tr><td>Gemini แสดงข้อความของ arbiter ตามตัวอักษรก่อนเสมอ ห้ามใช้สรุปแทน ห้ามตอบหรืออนุมัติแทนคุณ</td><td>KS-118 (แต่งเหตุผลเอง) · KS-160 (สรุป spec เองแทนการแสดง)</td></tr>
+  <tr><td>"สรุปจาก Builder" (v0.3.6) ต่อท้ายหน้าที่รอคุณตัดสิน: ข้อเท็จจริงมาจากข้อความข้างบนหรือที่ Builder ตรวจเอง ห้ามข้าม finding / "ยังไม่ได้ทดสอบ" ความเห็นต้องกำกับว่าเป็นความเห็น</td><td>ยังไม่มีข้อมูล · ข้อควรระวัง: Builder สรุปผลรีวิวงานของตัวเอง ที่ Gate 2 ให้ถือข้อความของ arbiter และ <code>gate2.md</code> เป็นตัวจริง</td></tr>
   <tr><td>ห้าม <code>git checkout / restore / reset / stash / clean</code></td><td>KS-118 (เกือบทับรายงาน) · KS-160 ใช้ <code>git checkout &lt;tree&gt; -- file</code> 2 ครั้ง</td></tr>
   <tr><td>ห้ามหาทางเลี่ยงเครื่องตรวจ ให้ใช้ dispute</td><td>KS-160 เปลี่ยนเป็น <code>externalValue</code> จน lint ไม่ตรวจ payload</td></tr>
   <tr><td>ห้ามแต่งข้อมูลที่ไม่มีที่มา ใช้ TODO / placeholder</td><td>KS-160 แต่ง license MIT, "Travel Accident", hostname ที่ดูเหมือนจริง</td></tr>
